@@ -1,0 +1,152 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprint Plan · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html">Overview</a><a href="01-product-strategy.html">1 · Product Strategy</a><a href="02-architecture-and-design.html">2 · Architecture & Design</a><a href="03-agent-system.html">3 · Agent System</a><a href="04-tech-stack.html">4 · Tech Stack</a><a href="05-sprint-plan.html" class="active">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html">6 · GTM & Deployment</a></nav><main><article><h1 id="5-endtoend-build-plan-sprints">5 · End‑to‑End Build Plan &amp; Sprints</h1>
+<p>Two‑week sprints. The phase ordering mirrors the deck's roadmap — <strong>Protect first, then grow</strong> — because each phase ships measurable value and creates the baseline the next phase needs.</p>
+<h2 id="51-phases-map-to-the-deck-roadmap">5.1 Phases (map to the deck roadmap)</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Deck step</th>
+<th>Goal</th>
+<th>Headline metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P0 Foundations</strong></td>
+<td>—</td>
+<td>Ingestion, lakehouse, config schema, engine skeleton, agent runtime</td>
+<td>Pipeline green on reference extract</td>
+</tr>
+<tr>
+<td><strong>P1 Protect margin</strong></td>
+<td>Step 1</td>
+<td>Incentive coverage &amp; determination at order entry, observe mode</td>
+<td>credit‑memo rate, margin leakage $</td>
+</tr>
+<tr>
+<td><strong>P2 Free the cash</strong></td>
+<td>Step 2</td>
+<td>Cluster reinvoice/DSR by root cause; fix biggest causes</td>
+<td>reinvoice rate, DSO</td>
+</tr>
+<tr>
+<td><strong>P3 De‑risk &amp; track</strong></td>
+<td>Step 3</td>
+<td>Invoicing &amp; component study + Mexico CFDI; begin consistency tracking</td>
+<td>CFDI events, rules banked</td>
+</tr>
+<tr>
+<td><strong>P4 Grow the business</strong></td>
+<td>Step 4</td>
+<td>Incentive effectiveness, give‑away analysis, program ROI, governance</td>
+<td>incremental volume, ROI</td>
+</tr>
+<tr>
+<td><strong>P5 Productize &amp; scale</strong></td>
+<td>—</td>
+<td>Multi‑tenant onboarding, deploy‑time agents, self‑serve config</td>
+<td>time‑to‑first‑report ↓</td>
+</tr>
+</tbody>
+</table>
+<p>Roughly one quarter per phase for a small team; P0 ~6–8 weeks. Adjust to team size.</p>
+<h2 id="52-p0-foundations-sprints-04">5.2 P0 — Foundations (Sprints 0–4)</h2>
+<p><strong>Sprint 0 — Discovery &amp; scaffolding</strong>
+- Secure a reference SAP extract (orders, items, condition records, VBRK/VBRP, change docs, memos).
+- Stand up repo, CI/CD, IaC skeleton, lakehouse + Postgres, secrets manager.
+- Draft the <strong>configuration schema</strong> (condition‑type→component, table→entity, segment defs, lifecycle steps). <em>DoD: schema validates the reference config.</em></p>
+<p><strong>Sprint 1 — Ingestion</strong>
+- SAP extraction (CDS/OData + RFC) into bronze; CDC transport for order/billing events.
+- dbt bronze→silver: build the <strong>transaction‑lifecycle spine</strong>, segmented dealer/fleet.
+- <em>DoD: reference extract lands and conforms; row‑count &amp; integrity tests pass.</em></p>
+<p><strong>Sprint 2 — Engine v0 (one component, one segment)</strong>
+- Implement Expected‑vs‑Actual for <strong>incentive coverage</strong>, dealer segment: peer/consistency baseline + amount bands; store Δ with provenance and $ value.
+- <em>DoD: engine flags a known missing‑SPA case on the reference data with the right $ gap.</em></p>
+<p><strong>Sprint 3 — Agent runtime + first tools</strong>
+- Stand up Managed Agents; create the agent‑config + version pipeline (<code>agents.create</code> once, reference by ID).
+- Build core custom tools: <code>query_warehouse</code>, <code>get_expected</code>/<code>get_actual</code>, <code>open_case</code>. Credentials host‑side.
+- <em>DoD: a Determination Agent investigates a flagged delta and opens a case end‑to‑end.</em></p>
+<p><strong>Sprint 4 — Case store, UI shell, observe mode</strong>
+- Postgres case/workflow store + audit log; React app shell with a case‑review screen; alerting plumbing.
+- <em>DoD: a human can review, accept/dismiss a case; every action is audited.</em></p>
+<h2 id="53-p1-protect-margin-sprints-59">5.3 P1 — Protect margin (Sprints 5–9)</h2>
+<ul>
+<li>Complete <strong>determination + eligibility</strong> coverage (SPA/eDeal OTC_I107, VPAS OTC_I008; Stock→Sold re‑determination; date windows, program limits).</li>
+<li>Determination &amp; Eligibility Agents at near‑real‑time on new/changed orders, <strong>observe mode</strong>.</li>
+<li>Margin rollup v1 + the "how much discount are we giving away?" view per dealer/program/segment (the margin bridge).</li>
+<li>Baseline‑confidence scoring so analysts know how much to trust each flag.</li>
+<li><em>Phase DoD: on reference data, the system reproduces real determination errors with $ impact; champion validates a sample; leakage baseline established.</em></li>
+</ul>
+<h2 id="54-p2-free-the-cash-sprints-1014">5.4 P2 — Free the cash (Sprints 10–14)</h2>
+<ul>
+<li><strong>Reinvoicing Root‑Cause Agent:</strong> cluster Z601/Z701/DSR/manual‑journal population; identify repeat‑offender dealers &amp; materials; learn entry signatures that predict a future correction.</li>
+<li>Order‑Change Agent: churn/gaming/unposted‑penalty detection (Step 28, OTC_I023, G‑1873H).</li>
+<li>Feedback loop: corrections feed the determination model (the loop starts compounding).</li>
+<li><em>Phase DoD: top reinvoice root causes quantified; predicted‑correction precision/recall meets target; reinvoice‑rate baseline + projected DSO impact.</em></li>
+</ul>
+<h2 id="55-p3-derisk-track-sprints-1519">5.5 P3 — De‑risk &amp; track (Sprints 15–19)</h2>
+<ul>
+<li><strong>Invoicing Agent:</strong> per‑segment invoice characterization; fleet ZSPV/ZDIF Cust‑Exp‑Price drift; duplicate VIN; account‑key checks. Surcharge &amp; freight component studies.</li>
+<li><strong>Compliance Agent (MX/LATAM):</strong> CFDI/SAT UUID linkage checks, reissue‑rate as audit exposure, export Z201 / intercompany.</li>
+<li><strong>Governance Agent v1:</strong> discover → score → ratify workflow; begin banking rules; drift watch.</li>
+<li><em>Phase DoD: invoicing deviations surfaced with $; CFDI exposure flagged; first governance rules ratified &amp; monitored.</em></li>
+</ul>
+<h2 id="56-p4-grow-sprints-2024">5.6 P4 — Grow (Sprints 20–24)</h2>
+<ul>
+<li><strong>Incentive‑Effectiveness Agent:</strong> pair incentive exposure with volume response; whitespace finder; waste finder; pre‑launch <strong>program ROI</strong> model.</li>
+<li>Govern‑from‑consistency at scale: rule set grows from the uncontested end inward.</li>
+<li>Executive "maturity curve" reporting (React→Catch→Prevent→Shape).</li>
+<li><em>Phase DoD: a program‑ROI prediction validated against a real past program; give‑away reduction quantified.</em></li>
+</ul>
+<h2 id="57-p5-productize-scale-ongoing">5.7 P5 — Productize &amp; scale (ongoing)</h2>
+<ul>
+<li><strong>Deploy‑time agents:</strong> Mapping Agent, Behavior‑Study Agent, Data‑Quality Agent (the repeatable sales/onboarding motion).</li>
+<li>Self‑serve configuration tooling + config validation; tenant provisioning automation (Terraform).</li>
+<li>Edition packaging (Protect / Protect+Comply / Grow); usage metering for value‑share pricing.</li>
+<li><em>Phase DoD: a new customer goes extract → priced report in days, not months.</em></li>
+</ul>
+<h2 id="58-crosscutting-workstreams-every-sprint">5.8 Cross‑cutting workstreams (every sprint)</h2>
+<ul>
+<li><strong>Security &amp; compliance:</strong> least‑privilege SAP access, tenant isolation, audit log, data residency, secrets hygiene (no creds in prompts), pen‑test before first customer go‑live.</li>
+<li><strong>Eval harness for agents:</strong> a labeled set of known deltas/corrections to measure agent precision/recall and catch regressions when prompts/models change. Treat agent prompts like code — versioned, reviewed, eval‑gated.</li>
+<li><strong>Cost governance:</strong> Haiku‑first triage, prompt caching of the stable config prefix, batch the non‑interactive runs, per‑tenant token telemetry.</li>
+<li><strong>Observe → Alert → Prevent graduation:</strong> every flag type starts in observe mode; promote only after precision clears a bar with the customer.</li>
+</ul>
+<h2 id="59-team-shape-lean">5.9 Team shape (lean)</h2>
+<p>Data engineer (ingestion/lakehouse) · ML/analytics engineer (the engine) · 1–2 backend engineers (orchestrator, tools, API) · agent/prompt engineer (agent library + evals) · frontend engineer · SAP‑pricing SME (part‑time, validates mappings &amp; findings) · product/GTM. Scale by adding engine + agent coverage breadth.</p>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>

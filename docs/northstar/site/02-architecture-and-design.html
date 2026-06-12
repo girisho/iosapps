@@ -1,0 +1,204 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Architecture & Design · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html">Overview</a><a href="01-product-strategy.html">1 · Product Strategy</a><a href="02-architecture-and-design.html" class="active">2 · Architecture & Design</a><a href="03-agent-system.html">3 · Agent System</a><a href="04-tech-stack.html">4 · Tech Stack</a><a href="05-sprint-plan.html">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html">6 · GTM & Deployment</a></nav><main><article><h1 id="2-architecture-design">2 · Architecture &amp; Design</h1>
+<h2 id="21-system-overview">2.1 System overview</h2>
+<pre><code>        SAP (ECC / S/4HANA)                         NorthStar Platform
+ ┌───────────────────────────┐        ┌────────────────────────────────────────────┐
+ │ SD/OTC pricing             │        │                                              │
+ │  • Sales orders, items     │  CDC / │  ┌────────────┐   ┌──────────────────────┐   │
+ │  • Condition records       │ extract│  │ Ingestion  │──▶│ Lakehouse (bronze/   │   │
+ │  • Condition contracts     │───────▶│  │ + mapping  │   │ silver/gold)         │   │
+ │  • Billing docs VBRK/VBRP  │ (RFC/  │  └────────────┘   └──────────┬───────────┘   │
+ │  • Change docs (Step 28…)  │  CDS/  │                              │               │
+ │  • Credit/debit memos      │  IDoc) │              ┌───────────────▼────────────┐  │
+ │  • CFDI/SAT (via PAC)      │        │              │  Expected-vs-Actual Engine  │  │
+ └───────────────────────────┘        │              │  build EXPECTED · capture   │  │
+                                       │              │  ACTUAL · score Δ           │  │
+                                       │              └───────────────┬─────────────┘  │
+                                       │                              │ deltas + cases │
+                                       │   ┌──────────────────────────▼─────────────┐  │
+                                       │   │  Agent Runtime (Claude Managed Agents)  │  │
+                                       │   │  investigate · cluster · draft rules ·  │  │
+                                       │   │  produce deploy-time analyses           │  │
+                                       │   └──────────────────────────┬─────────────┘  │
+                                       │   ┌──────────────────────────▼─────────────┐  │
+                                       │   │  App layer: cases, governance workflow, │  │
+                                       │   │  dashboards, alerts, reporting, API     │  │
+                                       │   └─────────────────────────────────────────┘  │
+                                       └────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Design principles</strong></p>
+<ol>
+<li><strong>Read‑mostly first.</strong> Ingest and analyze; never write to SAP in v1. Write‑back (e.g., posting a flagged correction) is a later, opt‑in capability behind explicit approval.</li>
+<li><strong>Configuration as data.</strong> All SAP‑specific mappings are declarative config, validated against a schema — the universal engine never hard‑codes a Z‑condition.</li>
+<li><strong>Segment‑aware everywhere.</strong> Dealer (<code>ZVAAUI</code>) and fleet (<code>ZVAAFL</code>) are baselined <em>separately</em> — a blended baseline averages the errors away. Segmentation is a first‑class dimension in the data model, the engine, and the agents.</li>
+<li><strong>Everything carries a dollar.</strong> A delta without a $ value is noise. Every Δ surfaced is priced.</li>
+<li><strong>The corrections are the ground truth.</strong> Z601 credit memos, Z701 debit memos, DSR claims, manual journals — each is a labeled record of something that went wrong upstream. They are the supervised signal that makes "Detect" sharpen over time.</li>
+</ol>
+<h2 id="22-the-expectedvsactual-engine-the-core-mechanic">2.2 The Expected‑vs‑Actual engine (the core mechanic)</h2>
+<p>For each <strong>price component</strong> on each <strong>transaction</strong>, in each <strong>lifecycle phase</strong>, the engine computes:</p>
+<pre><code>EXPECTED  = f(peer orders, history, policy, cost-to-serve, segment, date window)
+ACTUAL    = value observed in the SAP transaction
+Δ (delta) = ACTUAL − EXPECTED, classified and priced
+</code></pre>
+<p>Δ is then routed three ways (the deck's "Fix / Govern / Grow"):</p>
+<ul>
+<li><strong>Fix</strong> — deltas that are <em>mistakes</em> → caught before billing (a case).</li>
+<li><strong>Govern</strong> — deltas that <em>recur and are right</em> → become candidate policy.</li>
+<li><strong>Grow</strong> — the <em>pattern</em> of deltas → what to do better next.</li>
+</ul>
+<h3 id="component-coverage-each-is-a-study-lens-with-a-whats-at-stake">Component coverage (each is a study lens with a "what's at stake")</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>EXPECTED is built from</th>
+<th>What AI studies</th>
+<th>At stake</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>List price</strong></td>
+<td>date/region/model consistency</td>
+<td>base correctness by date/region/model</td>
+<td>a wrong base cascades into every line</td>
+</tr>
+<tr>
+<td><strong>Incentives &amp; discounts</strong> (SPA/eDeal, VPAS, programs)</td>
+<td>expected coverage per dealer × series × country × date window; normal amount band</td>
+<td>missing/wrong incentive, amount outside band</td>
+<td>over‑concession, margin given away</td>
+</tr>
+<tr>
+<td><strong>Eligibility &amp; re‑determination</strong></td>
+<td>SPA/program × class × model × dealer × geo × date; re‑trigger events</td>
+<td>stale eligibility on Stock→Sold flips, lapsed programs</td>
+<td>silent over/under‑credit</td>
+</tr>
+<tr>
+<td><strong>Order changes &amp; penalties</strong></td>
+<td>normal change behavior per dealer; penalty triggers (G‑1873H)</td>
+<td>churn/gaming patterns, unposted penalties</td>
+<td>margin shift, rework</td>
+</tr>
+<tr>
+<td><strong>Surcharges</strong></td>
+<td>pass‑through coverage by material &amp; period</td>
+<td>un‑recovered surcharge</td>
+<td>absorbed as cost</td>
+</tr>
+<tr>
+<td><strong>Freight</strong></td>
+<td>recovery rate by lane &amp; dealer</td>
+<td>under‑recovery</td>
+<td>freight eats margin</td>
+</tr>
+<tr>
+<td><strong>Warranty (SSP)</strong></td>
+<td>pre/post‑invoice pricing consistency</td>
+<td>mispriced obligations</td>
+<td>margin &amp; risk</td>
+</tr>
+<tr>
+<td><strong>RAR</strong></td>
+<td>allocation &amp; recognition timing (606/IFRS15)</td>
+<td>misallocation, timing</td>
+<td>revenue misstatement, audit exposure</td>
+</tr>
+<tr>
+<td><strong>Margin rollup</strong></td>
+<td>sum across all levers, by segment</td>
+<td>where &amp; why margin leaks</td>
+<td>the headline answer</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-expected-is-actually-computed">How EXPECTED is actually computed</h3>
+<p>A layered approach — each "expected" is the strongest signal available for that component:</p>
+<ol>
+<li><strong>Consistency / peer baselining</strong> — for a given (segment, dealer, series, country, date window), what do <em>comparable</em> orders do? High agreement → strong expected (and a governance candidate). This is unsupervised and needs no labels.</li>
+<li><strong>Policy/rule expected</strong> — where a documented rule exists (program eligibility windows, surcharge schedules), expected = the rule's output.</li>
+<li><strong>Supervised models</strong> — trained on the correction population (credit memos, claims) to predict "this order will be corrected" from its entry signature.</li>
+<li><strong>Statistical bands</strong> — normal amount/rate distributions per condition per segment; flag out‑of‑band.</li>
+</ol>
+<p>The engine stores <strong>why</strong> it expected what it expected (provenance), so every flag is explainable to a pricing analyst and to audit.</p>
+<h2 id="23-data-model-conceptual">2.3 Data model (conceptual)</h2>
+<p>Medallion lakehouse:</p>
+<ul>
+<li><strong>Bronze</strong> — raw SAP extracts, immutable, append‑only (orders, items, KONV/condition records, condition contracts, VBRK/VBRP, change docs, memos, CFDI events).</li>
+<li><strong>Silver</strong> — conformed, segmented, joined into a <strong>transaction‑lifecycle spine</strong>: one row per (unit/VIN or order‑item) tracing entry → incentive determination → eligibility → pricing → changes → invoicing → reinvoicing, with the active segment and price‑component breakdown.</li>
+<li><strong>Gold</strong> — the <strong>Expected/Actual/Δ</strong> facts per component, the priced cases, governance rule candidates, correction clusters, and the metrics marts (credit‑memo rate, leakage $, reinvoice rate, DSO, program ROI).</li>
+</ul>
+<p>Key conformed dimensions: <code>segment</code>, <code>dealer</code>, <code>series/model</code>, <code>country/region</code>, <code>program/SPA</code>, <code>condition_type</code>, <code>lifecycle_phase</code>, <code>date_window</code>.</p>
+<h2 id="24-segmentation-dealer-vs-fleet">2.4 Segmentation (dealer vs. fleet)</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Dealer (<code>ZVAAUI</code>)</th>
+<th>Fleet (<code>ZVAAFL</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shape</td>
+<td>high volume, SPA/program‑driven</td>
+<td>large, negotiated, multi‑unit</td>
+</tr>
+<tr>
+<td>Dynamics</td>
+<td>Stock↔Sold churn per unit; floor‑plan/BMI interest</td>
+<td>Customer Expected Price carried natively; TOPS reconciliation; settled via accrual condition contracts</td>
+</tr>
+<tr>
+<td>Typical error</td>
+<td>missing/wrong incentive → DSR claim + credit memo</td>
+<td>reconciliation gap on big deals (ZSPV/ZDIF Cust‑Exp‑Price drift)</td>
+</tr>
+</tbody>
+</table>
+<p>Baseline and alert on each independently.</p>
+<h2 id="25-security-data-compliance-design">2.5 Security, data &amp; compliance design</h2>
+<ul>
+<li><strong>Data minimization &amp; residency.</strong> Pull only the pricing/billing fields needed; support per‑region residency (esp. LATAM). PII is limited and tokenized where possible.</li>
+<li><strong>Read‑only SAP service account</strong> with a constrained authorization profile; all extracts logged.</li>
+<li><strong>Tenant isolation.</strong> Each customer is a logically isolated tenant (separate lakehouse namespaces, separate learned baselines and rule sets, separate agent vaults/credentials).</li>
+<li><strong>Auditability.</strong> Every Δ, every ratified rule, every agent action is logged with provenance and is reproducible — this is also a <em>selling point</em> for Internal Audit and for the Mexico/SAT compliance module (UUID linkage, reissue‑rate as audit exposure).</li>
+<li><strong>No secrets in prompts.</strong> Credentials for SAP, the data warehouse, and any MCP/tool integrations live in a secrets manager / agent vault, never in agent system prompts or messages.</li>
+<li><strong>Human‑in‑the‑loop by default.</strong> Agents <em>recommend</em>; people <em>ratify</em> and <em>act</em>. Any state‑changing action (rule activation, future SAP write‑back) is gated behind explicit human approval.</li>
+</ul>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>

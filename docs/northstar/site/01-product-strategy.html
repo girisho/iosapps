@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product Strategy · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html">Overview</a><a href="01-product-strategy.html" class="active">1 · Product Strategy</a><a href="02-architecture-and-design.html">2 · Architecture & Design</a><a href="03-agent-system.html">3 · Agent System</a><a href="04-tech-stack.html">4 · Tech Stack</a><a href="05-sprint-plan.html">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html">6 · GTM & Deployment</a></nav><main><article><h1 id="1-product-strategy">1 · Product Strategy</h1>
+<h2 id="11-what-we-are-selling">1.1 What we are selling</h2>
+<p><strong>NorthStar</strong> is an <em>Agentic Pricing Intelligence</em> layer that sits beside any SAP customer running condition‑technique pricing (SD/OTC), starting with commercial‑vehicle manufacturing (the "International" reference process in the deck) and generalizing to any condition‑technique pricing customer.</p>
+<p>It is <strong>read‑mostly and advisory</strong>: NorthStar does not run pricing in SAP. It <em>studies</em> how pricing and invoicing behave, catches what breaks, ratifies what's consistent into governance, and recommends where to grow. This positioning is deliberate — it dramatically lowers the buyer's risk and shortens security review, because we never write back to the order on day one.</p>
+<h3 id="the-three-sellable-outcomes-one-engine-three-pitches">The three sellable outcomes (one engine, three pitches)</h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Buyer pain</th>
+<th>What NorthStar delivers</th>
+<th>Economic proof</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Detect / Protect</strong></td>
+<td>Margin leaks silently — missing incentives, wrong nets, reinvoice churn</td>
+<td>Flags the order/invoice that deviates from its segment's normal, <em>before billing</em>, with the $ gap attached</td>
+<td>Credit‑memo rate ↓, margin leakage $ recovered</td>
+</tr>
+<tr>
+<td><strong>Govern</strong></td>
+<td>"Tribal" pricing rules nobody wrote down; audit exposure</td>
+<td>Surfaces high‑consistency patterns, lets a human ratify them into documented, auditable control, flags drift</td>
+<td># rules banked, audit findings ↓</td>
+</tr>
+<tr>
+<td><strong>Grow</strong></td>
+<td>Nobody can say which discount/program actually drove volume</td>
+<td>Pairs incentive exposure with volume response; finds whitespace; predicts program ROI</td>
+<td>Incremental volume, program ROI, give‑away reduced</td>
+</tr>
+</tbody>
+</table>
+<p>Sell <strong>Protect first</strong> (fast, measurable, low‑risk), then expand into Govern and Grow on the baseline the first phase creates. This is the land‑and‑expand spine of the whole business.</p>
+<h2 id="12-who-buys-it">1.2 Who buys it</h2>
+<ul>
+<li><strong>Economic buyer:</strong> VP Order‑to‑Cash / VP Pricing / CFO org. They feel margin leakage and reinvoice rework directly.</li>
+<li><strong>Champion:</strong> Pricing operations lead, revenue‑assurance lead, or SAP SD process owner.</li>
+<li><strong>Blockers to disarm early:</strong> SAP Basis/Security (data access), Tax/Compliance (esp. Mexico CFDI/SAT), Internal Audit (governance), Data Privacy.</li>
+</ul>
+<h2 id="13-productization-arc-from-one-customer-to-a-platform">1.3 Productization arc — from one customer to a platform</h2>
+<p>The deck is grounded in one live OTC‑05 configuration. To make it a <em>product</em>, separate <strong>what's universal</strong> from <strong>what's customer‑specific</strong>:</p>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│ UNIVERSAL PRODUCT (we build &amp; own, versioned)            │
+│  • Expected-vs-Actual engine &amp; delta scoring             │
+│  • Component model: list / incentive / surcharge /       │
+│    freight / warranty(SSP) / RAR / margin rollup         │
+│  • Agent runtime + agent library                         │
+│  • Governance ratify/drift workflow                      │
+│  • UI, alerting, case management, reporting              │
+├─────────────────────────────────────────────────────────┤
+│ CONFIGURATION LAYER (per customer, declarative — no code)│
+│  • SAP table/condition-type mappings (ZA5U, table 917…)  │
+│  • Segment definitions (dealer ZVAAUI vs fleet ZVAAFL)   │
+│  • Lifecycle step mappings (Step 28, OTC_I023…)          │
+│  • Compliance modules (Mexico CFDI/SAT, export Z201…)    │
+├─────────────────────────────────────────────────────────┤
+│ LEARNED LAYER (per customer, grows over time)            │
+│  • Baselines of &quot;normal&quot; per segment × component         │
+│  • Ratified governance rule set                          │
+│  • Correction root-cause clusters                        │
+└─────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Rule:</strong> anything that references a customer's specific SAP object (a Z‑condition, a table number, a program code) lives in the <em>configuration layer</em> as data, never in code. This is what makes the engine "the same for any SAP pricing customer" while the examples stay real.</p>
+<h3 id="maturity-adoption-curve-sell-the-journey">Maturity / adoption curve (sell the journey)</h3>
+<p><code>React (fix after billing) → Catch (flag at entry) → Prevent (stop upstream) → Shape (set pricing &amp; grow).</code> Each customer climbs this curve; each step up is an upsell and a renewal story. The same engine that protects margin also moves the customer's <em>people</em> from finding problems to deciding what to do about them.</p>
+<h2 id="14-packaging-pricing">1.4 Packaging &amp; pricing</h2>
+<ul>
+<li><strong>Edition tiers</strong> mapped to the maturity curve:</li>
+<li><strong>Protect</strong> — determination + invoicing study, observe mode, core components.</li>
+<li><strong>Protect+Comply</strong> — adds reinvoicing root‑cause + Mexico/LATAM compliance (CFDI/SAT, UUID linkage, export).</li>
+<li><strong>Grow</strong> — incentive effectiveness, give‑away analysis, program ROI, governance‑from‑consistency.</li>
+<li><strong>Pricing model:</strong> annual platform subscription + value‑share or tiered by transaction volume / # of pricing components monitored. Anchor the price to recovered margin and reduced reinvoice rework (the deck's own measures: credit‑memo rate, margin leakage, reinvoice rate, DSO).</li>
+<li><strong>Land:</strong> a paid "Behavior Study" engagement (4–6 weeks) that runs the engine on a data extract and produces a quantified leakage report. This <em>is</em> the sales motion and the first deliverable — see <a href="06-gtm-deployment-playbook.html"><code>06-gtm-deployment-playbook.md</code></a>.</li>
+</ul>
+<h2 id="15-where-to-start-first-wave-value-feasibility">1.5 Where to start — first wave (value × feasibility)</h2>
+<p>From the deck's value/feasibility matrix, the first wave "picks itself" — high consistency, high impact, ground truth available:</p>
+<p><strong>Do first:</strong> incentive coverage gaps · reinvoice root‑cause · fleet expected‑vs‑invoiced · discount give‑away analysis · CFDI pre‑stamp checks.
+<strong>Build toward:</strong> surcharge/freight recovery · govern‑from‑consistency · incentive effectiveness · RAR allocation checks · duplicate‑billing detection.</p>
+<p>The "grow" plays and RAR build on the baseline the first wave creates — so sequence them after, never before.</p>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>

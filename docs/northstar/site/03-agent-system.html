@@ -1,0 +1,161 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent System · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html">Overview</a><a href="01-product-strategy.html">1 · Product Strategy</a><a href="02-architecture-and-design.html">2 · Architecture & Design</a><a href="03-agent-system.html" class="active">3 · Agent System</a><a href="04-tech-stack.html">4 · Tech Stack</a><a href="05-sprint-plan.html">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html">6 · GTM & Deployment</a></nav><main><article><h1 id="3-the-agent-system">3 · The Agent System</h1>
+<p>This is the part of NorthStar that turns a static analytics product into <em>Agentic</em> Pricing Intelligence — and it's the answer to "what agents do I run when I sell and deploy this?"</p>
+<h2 id="31-two-kinds-of-agents">3.1 Two kinds of agents</h2>
+<ol>
+<li><strong>Deal/Deploy‑time agents</strong> — you (the vendor) run these during the <em>sales motion and onboarding</em> of a new customer. They turn a raw SAP extract into a quantified leakage report and a working configuration, fast. This is what makes the "Behavior Study" engagement repeatable instead of a custom consulting project every time.</li>
+<li><strong>Run‑time agents</strong> — these run <em>continuously inside the customer's tenant</em> after go‑live, investigating deltas, clustering corrections, drafting governance rules, and producing the periodic intelligence.</li>
+</ol>
+<p>Both are built on the <strong>same agent runtime</strong> and share a library of tools. The difference is only <em>when</em> they run and <em>who</em> triggers them.</p>
+<h2 id="32-why-agents-not-just-pipelines">3.2 Why agents (not just pipelines)</h2>
+<p>A deterministic pipeline can compute Δ. But the high‑value work — <em>investigating why a delta happened, deciding if it's a mistake vs. a rule, clustering hundreds of credit memos into a handful of root causes, drafting a defensible governance rule, writing the customer‑facing finding</em> — is open‑ended, multi‑step, and benefits from reasoning over heterogeneous evidence. That's exactly the "Should I build an agent?" sweet spot: complex, high‑value, recoverable (a human ratifies), and well within model capability.</p>
+<p>Keep the division clean: <strong>the engine computes deltas deterministically; the agents reason about them.</strong> Don't ask an agent to do arithmetic the warehouse should do.</p>
+<h2 id="33-the-agent-library">3.3 The agent library</h2>
+<p>Each agent is a persisted, versioned configuration (model + system prompt + tools) that you create once and reuse across every customer tenant.</p>
+<h3 id="deploytime-agents-run-during-sell-onboard">Deploy‑time agents (run during sell &amp; onboard)</h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Job</th>
+<th>Triggered</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mapping Agent</strong></td>
+<td>Inspect a customer's SAP extract, propose the configuration mapping (condition types → components, tables → entities, segment definitions). Ask the human to confirm ambiguous mappings.</td>
+<td>Onboarding, once per customer</td>
+<td>A draft <code>config</code> (mappings, segments, lifecycle steps) for human ratification</td>
+</tr>
+<tr>
+<td><strong>Behavior‑Study Agent</strong></td>
+<td>Run the engine over the extract, then write the quantified leakage report: top leakage drivers, $ at stake, by segment/dealer/component.</td>
+<td>Sales/POC, per extract</td>
+<td>The deliverable that closes the deal — a priced findings report</td>
+</tr>
+<tr>
+<td><strong>Data‑Quality Agent</strong></td>
+<td>Profile the extract, flag gaps/coverage problems, estimate confidence in each component's expected.</td>
+<td>Onboarding</td>
+<td>A readiness scorecard ("what we can study today vs. what needs more data")</td>
+</tr>
+</tbody>
+</table>
+<h3 id="runtime-agents-run-continuously-in-the-customer-tenant">Run‑time agents (run continuously in the customer tenant)</h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Job (maps to deck)</th>
+<th>Cadence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Determination &amp; Eligibility Agent</strong></td>
+<td>For flagged orders (no expected SPA/VPAS, amount out of band, stale eligibility on Stock→Sold flips), investigate and assemble a case with evidence + $ gap</td>
+<td>Near‑real‑time on new/changed orders, observe mode</td>
+</tr>
+<tr>
+<td><strong>Invoicing Agent</strong></td>
+<td>Characterize every invoice, surface deviations from segment normal (incl. fleet ZSPV/ZDIF Cust‑Exp‑Price drift, duplicate VIN, wrong account keys)</td>
+<td>On billing events</td>
+</tr>
+<tr>
+<td><strong>Reinvoicing Root‑Cause Agent</strong></td>
+<td>Cluster the credit‑memo / DSR / debit‑memo / manual‑journal population by root cause; identify repeat‑offender dealers &amp; materials; learn entry signatures that predict a correction</td>
+<td>Daily/weekly batch</td>
+</tr>
+<tr>
+<td><strong>Order‑Change Agent</strong></td>
+<td>Study change behavior per dealer — frequency, lateness, cancel‑and‑rebook timed to date windows; flag systemic churners, gaming patterns, unposted penalties (G‑1873H)</td>
+<td>Daily</td>
+</tr>
+<tr>
+<td><strong>Compliance Agent (MX/LATAM)</strong></td>
+<td>Flag broken CFDI/SAT UUID linkage, read reinvoice frequency as SAT exposure, extend Expected‑vs‑Actual to export Z201 / intercompany / declared value</td>
+<td>On CFDI events</td>
+</tr>
+<tr>
+<td><strong>Governance Agent</strong></td>
+<td>Discover high‑consistency patterns → score (bank‑able vs. genuinely split) → draft a documented, auditable rule for human ratification → watch for drift</td>
+<td>Weekly + on‑demand</td>
+</tr>
+<tr>
+<td><strong>Incentive‑Effectiveness Agent (Grow)</strong></td>
+<td>Pair incentive exposure with volume response; separate what drives sales from margin given away; find whitespace; model program ROI before launch</td>
+<td>Monthly + pre‑program</td>
+</tr>
+</tbody>
+</table>
+<h3 id="orchestration">Orchestration</h3>
+<p>A lightweight <strong>Coordinator</strong> agent (or a scheduler) fans work out to the specialist agents and consolidates their cases into the daily/weekly intelligence. Specialists run in their own isolated context with their own tools — they share the lakehouse and case store, not conversation history. Use parallel sub‑agents for fan‑out (e.g., one investigation per flagged order), kept asynchronous so the coordinator isn't blocked on the slowest one.</p>
+<h2 id="34-how-the-agents-actually-run-platform-mechanics">3.4 How the agents actually run (platform mechanics)</h2>
+<p>NorthStar's agents are built on <strong>Claude Managed Agents</strong> (<code>claude-opus-4-8</code> as the default reasoning model — see <a href="04-tech-stack.html"><code>04-tech-stack.md</code></a> for the model rationale). The mechanics that matter:</p>
+<ul>
+<li><strong>Create once, run many.</strong> Each agent is a persisted, versioned object (<code>agents.create</code>). You store the agent ID and reference it from every session — you do <strong>not</strong> recreate the agent per run. Versioning lets you improve an agent's prompt/tools without breaking running customers, and pin a customer to a known‑good version.</li>
+<li><strong>Tools.</strong> Agents get the built‑in toolset (bash, file ops, web fetch) <strong>plus custom tools</strong> that are the real integration surface:</li>
+<li><code>query_warehouse(sql)</code> — read gold/silver facts (deltas, cases, baselines).</li>
+<li><code>get_expected(component, keys)</code> / <code>get_actual(...)</code> — fetch a specific Expected/Actual pair with provenance.</li>
+<li><code>cluster_corrections(filter)</code> — run the correction‑clustering routine.</li>
+<li><code>propose_rule(pattern)</code> / <code>draft_finding(...)</code> — structured outputs for governance rules and report sections.</li>
+<li><code>open_case(...)</code> — write a case to the case store (the only "write" a run‑time agent does, and it's internal, not to SAP).</li>
+<li><strong>Custom tools keep secrets host‑side.</strong> When an agent needs the SAP/warehouse credential, the call is executed by <em>your</em> orchestrator (which holds the credential) and the result is handed back to the agent — the agent's sandbox never sees the secret. For service integrations that speak MCP, use <strong>vaults</strong> so credentials are injected at egress and never enter a prompt.</li>
+<li><strong>Scheduled deployments.</strong> The run‑time agents fire on a cron cadence (nightly reinvoice clustering, weekly governance discovery, monthly incentive effectiveness) — each firing is an autonomous session. No human has to kick them off.</li>
+<li><strong>Outcomes / rubric‑graded work.</strong> For deliverables with a checkable definition of done (e.g., "the leakage report must have a $ figure per top‑10 driver, split by segment"), define the outcome as a rubric so the agent iterates until it passes.</li>
+<li><strong>Human‑in‑the‑loop gates.</strong> Rule activation and any future SAP write‑back run under an "always ask" permission policy — the agent pauses and a human approves before anything changes state.</li>
+<li><strong>Per‑tenant isolation.</strong> Each customer gets its own environment/vault and its own learned baselines and rule set. Agents in one tenant cannot see another's data.</li>
+</ul>
+<h2 id="35-the-continuous-loop-study-remodel-apply">3.5 The continuous loop (Study → Remodel → Apply)</h2>
+<p>The agents don't just run once — they implement the deck's improvement loop:</p>
+<pre><code>Study     → learn the expected, measure the actual, explain the deltas   (agents investigate)
+Remodel   → tighten the expected, reshape policy, redesign the step       (humans ratify, baselines update)
+Apply     → put the improved expected back into operation, then watch again
+</code></pre>
+<p>Fix, Govern, and Grow are this <em>same loop</em> run on errors, recurring patterns, and opportunities respectively. The correction population is the feedback signal: every credit memo the customer issues teaches the determination model to catch the next one earlier. <strong>This is the compounding moat — the product is more valuable on day 500 than day 1.</strong></p>
+<h2 id="36-what-you-run-concretely-when-you-sell-a-deal">3.6 What you run, concretely, when you sell a deal</h2>
+<ol>
+<li>Get a scoped SAP extract → run the <strong>Data‑Quality Agent</strong> (readiness scorecard).</li>
+<li>Run the <strong>Mapping Agent</strong> → confirm the config with the customer's SD process owner.</li>
+<li>Run the <strong>Behavior‑Study Agent</strong> → produce the priced leakage report. <strong>This is the close.</strong></li>
+<li>On signature, stand up the customer tenant, pin the config, and turn on the <strong>run‑time agents in observe mode</strong>.</li>
+<li>Review the first cases with the champion, tune thresholds, then graduate from observe → alert → (later) prevent.</li>
+</ol>
+<p>See the full motion in <a href="06-gtm-deployment-playbook.html"><code>06-gtm-deployment-playbook.md</code></a>.</p>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>

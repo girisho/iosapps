@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tech Stack · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html">Overview</a><a href="01-product-strategy.html">1 · Product Strategy</a><a href="02-architecture-and-design.html">2 · Architecture & Design</a><a href="03-agent-system.html">3 · Agent System</a><a href="04-tech-stack.html" class="active">4 · Tech Stack</a><a href="05-sprint-plan.html">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html">6 · GTM & Deployment</a></nav><main><article><h1 id="4-technology-stack">4 · Technology Stack</h1>
+<p>Choices optimize for: enterprise SAP integration, a lakehouse that can hold years of pricing transactions, an agent runtime that's production‑grade, and a security posture that survives a manufacturing customer's review.</p>
+<h2 id="41-stack-at-a-glance">4.1 Stack at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SAP ingestion</strong></td>
+<td>SAP CDC via <strong>OData/CDS extraction</strong>, RFC/BAPI for table reads, IDoc for billing/memo events; landed by Fivetran/Airbyte <strong>or</strong> a thin custom extractor</td>
+<td>Meet the customer's existing SAP integration standard; CDS views are the modern, supported path on S/4HANA</td>
+</tr>
+<tr>
+<td><strong>Streaming / CDC transport</strong></td>
+<td>Kafka (or cloud‑native: Kinesis / Pub/Sub)</td>
+<td>Near‑real‑time order/billing events for observe‑mode flagging</td>
+</tr>
+<tr>
+<td><strong>Lakehouse</strong></td>
+<td><strong>Databricks</strong> or <strong>Snowflake</strong> (Delta/Iceberg), medallion (bronze/silver/gold)</td>
+<td>Years of transactions, cheap storage, SQL + ML in one place, per‑tenant isolation via schemas/catalogs</td>
+</tr>
+<tr>
+<td><strong>Transformations</strong></td>
+<td><strong>dbt</strong> for silver/gold; Spark for heavy joins</td>
+<td>Declarative, testable, version‑controlled transforms; configuration mappings expressed as dbt vars/seeds</td>
+</tr>
+<tr>
+<td><strong>Expected‑vs‑Actual engine</strong></td>
+<td>Python services (pandas/Polars + scikit‑learn / statistical baselines); feature store for learned baselines</td>
+<td>Mix of unsupervised consistency baselining, statistical bands, and supervised correction‑prediction models</td>
+</tr>
+<tr>
+<td><strong>Agent runtime</strong></td>
+<td><strong>Claude Managed Agents</strong> on the Claude Developer Platform</td>
+<td>Anthropic runs the agent loop + per‑session sandbox; persisted/versioned agents; scheduled deployments; vaults for credentials; outcomes for rubric‑graded deliverables</td>
+</tr>
+<tr>
+<td><strong>Reasoning model</strong></td>
+<td><strong><code>claude-opus-4-8</code></strong> (default) for investigation/clustering/rule‑drafting; <strong><code>claude-haiku-4-5</code></strong> for cheap high‑volume triage; <strong><code>claude-fable-5</code></strong> only for the hardest long‑horizon analyses</td>
+<td>Opus 4.8 is the most capable Opus‑tier model for long‑horizon agentic work; Haiku for cost‑sensitive fan‑out; see §4.3</td>
+</tr>
+<tr>
+<td><strong>Backend / API</strong></td>
+<td>Python (<strong>FastAPI</strong>) services; the orchestrator that hosts custom tools and holds credentials</td>
+<td>First‑class Anthropic SDK; same language as the engine</td>
+</tr>
+<tr>
+<td><strong>Case / workflow store</strong></td>
+<td>Postgres (cases, governance rules, ratification state, audit log)</td>
+<td>Transactional, auditable, relational workflow</td>
+</tr>
+<tr>
+<td><strong>Frontend</strong></td>
+<td><strong>TypeScript + React</strong> (Next.js); component‑driven dashboards, case review, governance ratify/drift UI</td>
+<td>Standard, fast, good charting ecosystem</td>
+</tr>
+<tr>
+<td><strong>Infra</strong></td>
+<td>Containers on Kubernetes (EKS/GKE) or the customer's preferred cloud; IaC via Terraform</td>
+<td>Repeatable per‑tenant deploys</td>
+</tr>
+<tr>
+<td><strong>Secrets</strong></td>
+<td>Cloud secrets manager + Managed‑Agents vaults</td>
+<td>No credential ever enters a prompt or sandbox</td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td>OpenTelemetry traces, structured logs, agent token/usage telemetry; dashboards in Grafana/cloud‑native</td>
+<td>Cost control + auditability of agent actions</td>
+</tr>
+</tbody>
+</table>
+<h2 id="42-why-managed-agents-vs-rolling-our-own-loop">4.2 Why Managed Agents (vs. rolling our own loop)</h2>
+<ul>
+<li>Anthropic runs the agent loop <em>and</em> hosts the per‑session container where tools execute — we don't operate that compute.</li>
+<li><strong>Persisted, versioned agents</strong> map exactly to our "build the agent once, deploy to every customer" model; pin a customer to a version, roll forward safely.</li>
+<li><strong>Scheduled deployments</strong> give us the nightly/weekly/monthly cadence the run‑time agents need with no extra scheduler to babysit.</li>
+<li><strong>Vaults + custom tools</strong> keep SAP/warehouse credentials host‑side and out of prompts — critical for the security review.</li>
+<li><strong>Outcomes</strong> give the Behavior‑Study and report agents a rubric‑graded "done."</li>
+<li>For tenants that mandate self‑hosted compute (no data leaves their VPC for tool execution), Managed Agents supports <strong>self‑hosted sandboxes</strong> — the agent loop stays on Anthropic's side, but bash/file/code tools run on infrastructure we control inside the customer boundary.</li>
+</ul>
+<blockquote>
+<p>If a customer forbids the managed runtime entirely, the fallback is <strong>Claude API + tool use</strong> with our own orchestration loop — same models, same tools, we run the loop. Keep the tool definitions runtime‑agnostic so we can switch without rewriting the agents.</p>
+</blockquote>
+<h2 id="43-model-selection-cost-discipline">4.3 Model selection &amp; cost discipline</h2>
+<ul>
+<li><strong>Default reasoning:</strong> <code>claude-opus-4-8</code> — most capable Opus‑tier model; best for the long‑horizon investigation, correction clustering, and rule drafting that are the high‑value agent work. Run agentic work at <strong><code>high</code>/<code>xhigh</code> effort</strong> with the full task spec given up front.</li>
+<li><strong>High‑volume triage / fan‑out:</strong> <code>claude-haiku-4-5</code> for the cheap first pass over thousands of orders (is this even worth a deeper look?), escalating only the interesting ones to Opus. This is the main cost lever.</li>
+<li><strong>Hardest analyses only:</strong> <code>claude-fable-5</code> for the most demanding long‑horizon work, when justified — it's priced above Opus‑tier, so reserve it.</li>
+<li><strong>Prompt caching:</strong> the per‑customer system prompt + config + tool definitions are a large, stable prefix shared across every session — cache it. This is a major cost reduction on a continuously‑running fleet of agents.</li>
+<li><strong>Batch where latency doesn't matter:</strong> nightly reinvoice clustering and monthly effectiveness runs can use the Batches API (50% cheaper) for the bulk LLM calls that aren't interactive.</li>
+<li><strong>Token telemetry per tenant</strong> feeds both cost control and the value‑share pricing story.</li>
+</ul>
+<blockquote>
+<p>Model IDs are exact strings (<code>claude-opus-4-8</code>, <code>claude-haiku-4-5</code>, <code>claude-fable-5</code>) — no date suffixes. Use adaptive thinking; do not use deprecated <code>budget_tokens</code>.</p>
+</blockquote>
+<h2 id="44-build-vs-buy">4.4 Build vs. buy</h2>
+<ul>
+<li><strong>Buy/standardize:</strong> SAP extraction connectors, lakehouse, dbt, the agent runtime, secrets manager — don't reinvent these.</li>
+<li><strong>Build (the IP):</strong> the Expected‑vs‑Actual engine, the component model, the agent library + tools, the governance ratify/drift workflow, and the configuration schema that makes one engine serve many SAP customers. This is the product.</li>
+</ul>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>
