@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overview · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html" class="active">Overview</a><a href="01-product-strategy.html">1 · Product Strategy</a><a href="02-architecture-and-design.html">2 · Architecture & Design</a><a href="03-agent-system.html">3 · Agent System</a><a href="04-tech-stack.html">4 · Tech Stack</a><a href="05-sprint-plan.html">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html">6 · GTM & Deployment</a></nav><main><article><h1 id="northstar-agentic-pricing-intelligence">NorthStar — Agentic Pricing Intelligence</h1>
+<blockquote>
+<p>Productizing the "Agentic Pricing Intelligence" concept (OTC‑05 Order Management &amp; Pricing) into a repeatable, sellable SAP‑pricing product.</p>
+</blockquote>
+<p>This folder is the end‑to‑end product plan derived from the <code>NorthStar_Pricing_SAP</code> deck. It covers what we are building, how it is designed, the AI/agent architecture, the technology stack, the sprint‑by‑sprint build process, and the go‑to‑market motion for deploying it at each customer you sell to.</p>
+<h2 id="read-in-this-order">Read in this order</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Doc</th>
+<th>What it answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="01-product-strategy.html"><code>01-product-strategy.md</code></a></td>
+<td>What the product is, who buys it, how we go from one customer to a platform, pricing/packaging.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="02-architecture-and-design.html"><code>02-architecture-and-design.md</code></a></td>
+<td>System design, the Expected‑vs‑Actual engine, data model, security &amp; compliance.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="03-agent-system.html"><code>03-agent-system.md</code></a></td>
+<td>The agents — what they are, how they run, and how you run them when you sell &amp; deploy.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="04-tech-stack.html"><code>04-tech-stack.md</code></a></td>
+<td>Concrete technology choices and why.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="05-sprint-plan.html"><code>05-sprint-plan.md</code></a></td>
+<td>End‑to‑end delivery: phases, sprints, backlog, definition of done.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="06-gtm-deployment-playbook.html"><code>06-gtm-deployment-playbook.md</code></a></td>
+<td>The repeatable "sell → onboard → deploy → expand" runbook per customer.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-onesentence-thesis">The one‑sentence thesis</h2>
+<blockquote>
+<p><strong>We don't lack pricing data — we lack a view of what <em>should</em> have happened.</strong> Build the <em>expected</em> price for every order and component, capture the <em>actual</em> from SAP, and the monitored gap (Δ) is the intelligence — used three ways: <strong>Detect</strong> errors before they cost, <strong>Govern</strong> the patterns the business already agrees on, and <strong>Grow</strong> revenue by measuring what actually moves volume.</p>
+</blockquote>
+<h2 id="the-product-in-four-moving-parts">The product in four moving parts</h2>
+<ol>
+<li><strong>Ingestion</strong> — read SAP OTC pricing data (condition records, condition contracts, billing docs, change docs) across the Order‑to‑Cash lifecycle, segmented dealer vs. fleet.</li>
+<li><strong>The Engine</strong> — for every price component (list, incentive, surcharge, freight, warranty/SSP, RAR) build <em>Expected</em> from peers/history/policy/cost‑to‑serve, compare to <em>Actual</em>, and surface the Δ with a dollar value attached.</li>
+<li><strong>The Agents</strong> — autonomous, model‑driven workers that investigate deltas, cluster correction root‑causes, draft governance rules, and produce the deploy‑time analyses you run when selling.</li>
+<li><strong>The Loop</strong> — Study → Remodel → Apply. Every correction the customer's process produces becomes new training signal, so the system sharpens the longer it runs.</li>
+</ol>
+<h2 id="why-this-is-defensible-and-not-just-a-dashboard">Why this is defensible (and not "just a dashboard")</h2>
+<p>A report counts the errors someone already predicted, using the same rules for dealer and fleet, and is as useful on day 500 as day 1. NorthStar learns each segment's <em>normal</em> on its own, discovers deltas nobody queried for, tells you which incentive moved volume vs. gave away margin, and gets better with every correction it ingests. That learning loop + the agent layer is the moat.</p>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>

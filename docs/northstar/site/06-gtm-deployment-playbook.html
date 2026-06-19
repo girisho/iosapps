@@ -1,0 +1,171 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GTM & Deployment · NorthStar</title><style>
+:root{--bg:#faf9f6;--fg:#1f2328;--muted:#646a73;--accent:#b5512f;--line:#e3e0d8;--code:#f3f1ea;--sidebar:#f4f1ea}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:var(--sidebar);border-right:1px solid var(--line);padding:28px 22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav h1{font-size:18px;margin:0 0 4px;letter-spacing:.3px}
+nav .tag{color:var(--muted);font-size:12.5px;margin-bottom:22px;display:block}
+nav a{display:block;padding:8px 12px;margin:2px 0;border-radius:7px;color:var(--fg);text-decoration:none;font-size:14.5px}
+nav a:hover{background:#eae6db}
+nav a.active{background:var(--accent);color:#fff;font-weight:600}
+main{flex:1;min-width:0;padding:48px 56px;max-width:980px}
+article{overflow-wrap:break-word}
+h1,h2,h3,h4{line-height:1.25;font-weight:680}
+h1{font-size:30px;margin:.2em 0 .6em;border-bottom:2px solid var(--line);padding-bottom:.3em}
+h2{font-size:22px;margin:1.7em 0 .5em}
+h3{font-size:17px;margin:1.4em 0 .4em}
+a{color:var(--accent)}
+p,li{color:#2a2e33}
+blockquote{margin:1.2em 0;padding:.6em 1.1em;border-left:4px solid var(--accent);background:#fff;color:#3a3f45;border-radius:0 7px 7px 0}
+code{background:var(--code);padding:.15em .4em;border-radius:5px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:9px;overflow-x:auto;border:1px solid var(--line);font-size:13px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--sidebar);font-weight:650}
+tr:nth-child(even) td{background:#fcfbf8}
+hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:860px){.wrap{flex-direction:column}nav{width:100%;height:auto;position:static;flex-basis:auto}main{padding:28px 20px}}
+</style></head>
+<body><div class="wrap"><nav><h1>NorthStar</h1><span class="tag">Agentic Pricing Intelligence · product plan</span><a href="00-overview.html">Overview</a><a href="01-product-strategy.html">1 · Product Strategy</a><a href="02-architecture-and-design.html">2 · Architecture & Design</a><a href="03-agent-system.html">3 · Agent System</a><a href="04-tech-stack.html">4 · Tech Stack</a><a href="05-sprint-plan.html">5 · Sprint Plan</a><a href="06-gtm-deployment-playbook.html" class="active">6 · GTM & Deployment</a></nav><main><article><h1 id="6-gotomarket-percustomer-deployment-playbook">6 · Go‑to‑Market &amp; Per‑Customer Deployment Playbook</h1>
+<p>The repeatable runbook for every customer you sell to. The whole point of the productization work is that this motion is the <em>same</em> each time, with only the configuration layer changing.</p>
+<h2 id="61-the-motion-land-onboard-deploy-expand">6.1 The motion (land → onboard → deploy → expand)</h2>
+<pre><code> LAND                 ONBOARD               DEPLOY                 EXPAND
+ ───────────────────  ────────────────────  ─────────────────────  ─────────────────────
+ Behavior Study       Map config            Tenant + observe mode   Govern + Grow editions
+ (paid POC, priced    (Mapping Agent +      (run-time agents on,     (ratify rules, ROI,
+  leakage report)      human ratify)         observe→alert→prevent)   maturity-curve upsell)
+</code></pre>
+<h3 id="stage-1-land-the-behavior-study-46-weeks-paid">Stage 1 — LAND: the Behavior Study (4–6 weeks, paid)</h3>
+<p>The deck <em>is</em> the pitch; the <strong>Behavior Study</strong> is how you prove it on the prospect's own data.</p>
+<ol>
+<li>NDA + scoped, read‑only SAP extract (a sample of orders/items/conditions/billing/memos across a representative period).</li>
+<li>Run the <strong>Data‑Quality Agent</strong> → readiness scorecard ("what we can study today").</li>
+<li>Run the <strong>Mapping Agent</strong> → draft configuration; review ambiguous mappings with their SD process owner.</li>
+<li>Run the <strong>Behavior‑Study Agent</strong> → the deliverable: a <strong>priced leakage report</strong> — top drivers, $ at stake, by segment/dealer/component, plus the "how much discount are we giving away?" view.</li>
+<li>Present findings to the economic buyer. The report's own numbers (credit‑memo rate, leakage $, reinvoice rate) are the business case and the price anchor.</li>
+</ol>
+<blockquote>
+<p>First wave to show in the report (high value × feasible, ground truth available): <strong>incentive coverage gaps, reinvoice root‑cause, fleet expected‑vs‑invoiced, discount give‑away, CFDI pre‑stamp.</strong> Lead with whichever is biggest in <em>their</em> data.</p>
+</blockquote>
+<h3 id="stage-2-onboard-stand-up-the-tenant">Stage 2 — ONBOARD: stand up the tenant</h3>
+<ul>
+<li>Provision an isolated tenant (lakehouse namespaces, Postgres, agent environment/vault) via Terraform.</li>
+<li>Establish the production read‑only SAP connection (CDS/OData + CDC events); least‑privilege service account.</li>
+<li>Ratify and pin the <strong>configuration</strong> produced in Stage 1; pin agent versions.</li>
+<li>Load history to build initial baselines (dealer and fleet, separately).</li>
+</ul>
+<h3 id="stage-3-deploy-observe-alert-prevent">Stage 3 — DEPLOY: observe → alert → prevent</h3>
+<ul>
+<li>Turn on the <strong>run‑time agents in observe mode</strong>. They produce cases without alerting anyone yet.</li>
+<li>Weekly review with the champion: tune thresholds, validate precision per flag type.</li>
+<li>Graduate each flag type <strong>observe → alert</strong> once precision clears the agreed bar, then later toward <strong>prevent</strong> (catch at entry). Never skip straight to alerting — false positives kill trust.</li>
+<li>Schedule the cadence agents (nightly reinvoice clustering, weekly governance discovery, monthly effectiveness).</li>
+</ul>
+<h3 id="stage-4-expand-climb-the-maturity-curve">Stage 4 — EXPAND: climb the maturity curve</h3>
+<ul>
+<li>Move the customer up <code>React → Catch → Prevent → Shape</code> and up the edition ladder <code>Protect → Protect+Comply → Grow</code>.</li>
+<li>Activate <strong>Governance</strong> (ratify high‑consistency rules into documented control; drift watch) — strong renewal/audit story.</li>
+<li>Activate <strong>Grow</strong> (incentive effectiveness, give‑away reduction, program‑ROI prediction) — net‑new revenue story, expands the buyer from OTC ops into the commercial org.</li>
+</ul>
+<h2 id="62-what-you-run-at-each-step-agent-checklist">6.2 What you run at each step (agent checklist)</h2>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Agent(s) you run</th>
+<th>Human action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POC</td>
+<td>Data‑Quality → Mapping → Behavior‑Study</td>
+<td>SME confirms mappings; buyer reviews report</td>
+</tr>
+<tr>
+<td>Onboard</td>
+<td>(config ratified, baselines built)</td>
+<td>Ratify config, pin versions</td>
+</tr>
+<tr>
+<td>Go‑live</td>
+<td>Determination, Eligibility, Invoicing — observe</td>
+<td>Champion reviews first cases</td>
+</tr>
+<tr>
+<td>Cash</td>
+<td>Reinvoicing Root‑Cause, Order‑Change</td>
+<td>Fix top root causes</td>
+</tr>
+<tr>
+<td>De‑risk</td>
+<td>Compliance (MX/LATAM), Governance</td>
+<td>Ratify first rules</td>
+</tr>
+<tr>
+<td>Grow</td>
+<td>Incentive‑Effectiveness</td>
+<td>Redirect spend; plan programs</td>
+</tr>
+</tbody>
+</table>
+<h2 id="63-proof-value-tracking-the-renewal-engine">6.3 Proof &amp; value tracking (the renewal engine)</h2>
+<p>Track the deck's own measures per customer, before/after, and report them quarterly:</p>
+<ul>
+<li><strong>Protect:</strong> credit‑memo rate, margin leakage $ recovered.</li>
+<li><strong>Cash:</strong> reinvoice rate, DSO.</li>
+<li><strong>De‑risk:</strong> CFDI exposure events caught, governance rules banked, audit findings.</li>
+<li><strong>Grow:</strong> incremental volume attributable to programs, program ROI, give‑away reduction.</li>
+</ul>
+<p>This dashboard <em>is</em> the renewal conversation and the value‑share invoice backup.</p>
+<h2 id="64-risks-how-the-design-mitigates-them">6.4 Risks &amp; how the design mitigates them</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation (already in the design)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Long/painful SAP security review</td>
+<td>Read‑only, advisory v1; no write‑back; least‑privilege; audit log; data residency</td>
+</tr>
+<tr>
+<td>False positives erode trust</td>
+<td>Observe→alert→prevent graduation; baseline confidence; $‑priced cases only</td>
+</tr>
+<tr>
+<td>"It's just a dashboard" objection</td>
+<td>Learns each segment's normal, discovers unqueried deltas, sharpens with corrections — agents, not rules</td>
+</tr>
+<tr>
+<td>Customer‑specific SAP config</td>
+<td>Configuration‑as‑data layer; Mapping Agent accelerates each onboarding</td>
+</tr>
+<tr>
+<td>Agent cost on a continuous fleet</td>
+<td>Haiku‑first triage, prompt caching of stable prefix, batch non‑interactive runs, token telemetry</td>
+</tr>
+<tr>
+<td>Compliance/tax sensitivity (MX/SAT)</td>
+<td>Dedicated Compliance Agent + auditable UUID‑linkage and reissue‑rate exposure tracking</td>
+</tr>
+<tr>
+<td>Data leaving customer boundary</td>
+<td>Per‑tenant isolation; self‑hosted sandbox option for tool execution inside the VPC</td>
+</tr>
+</tbody>
+</table>
+<h2 id="65-the-ask-how-to-frame-the-deal-straight-from-the-deck">6.5 The ask (how to frame the deal — straight from the deck)</h2>
+<blockquote>
+<p>Protect the value pricing creates. Then use the same study to grow it. One behavior study across every price component and every phase — learning from the errors the process already produces. Start at determination and the discount give‑away; follow the lifecycle into reinvoicing, invoicing and compliance; then turn the same patterns toward governance you can bank and incentives that sell more.</p>
+</blockquote>
+<div class="footer">NorthStar — Agentic Pricing Intelligence. Generated from the markdown source in <code>docs/northstar/</code>.</div>
+</article></main></div></body></html>
