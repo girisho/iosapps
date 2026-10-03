@@ -4,12 +4,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-/* Layout: an operator console. Intake strip on top, then verdict first, evidence second, knowledge base last. */
+/* Layout: an operator console. Pipeline stepper on top; each stage is a panel in run order; knowledge base and case history as separate views. */
 :root{
   --bg:#F3F5F4; --surface:#FFFFFF; --sunk:#E9EDEB; --ink:#1B2321; --muted:#596864; --line:#D5DCD9;
   --accent:#1D5E79; --accent-ink:#FFFFFF; --accent-soft:#DCEBF2;
   --err:#B42318; --err-soft:#FBE7E5; --warn:#9A5B00; --warn-soft:#FBEFD9;
-  --ok:#2C7A4B; --ok-soft:#E1F2E7; --info:#3A57A0; --info-soft:#E3E9F7; --noise:#7A8783;
+  --ok:#2C7A4B; --ok-soft:#E1F2E7; --info:#3A57A0; --info-soft:#E3E9F7; --ai:#6B3FA0; --ai-soft:#EEE6F8;
   --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -18,577 +18,867 @@
   --bg:#111615; --surface:#182020; --sunk:#202a29; --ink:#E4EBE9; --muted:#97A7A2; --line:#2D3937;
   --accent:#74B6D3; --accent-ink:#0E1A20; --accent-soft:#1D3440;
   --err:#F08A80; --err-soft:#3A1D1A; --warn:#E8AA55; --warn-soft:#352812; --ok:#73C493; --ok-soft:#173022;
-  --info:#97AEEA; --info-soft:#1E2740; --noise:#7F8E8A; color-scheme:dark}}
+  --info:#97AEEA; --info-soft:#1E2740; --ai:#C4A2F0; --ai-soft:#2A2038; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111615; --surface:#182020; --sunk:#202a29; --ink:#E4EBE9; --muted:#97A7A2; --line:#2D3937;
   --accent:#74B6D3; --accent-ink:#0E1A20; --accent-soft:#1D3440;
   --err:#F08A80; --err-soft:#3A1D1A; --warn:#E8AA55; --warn-soft:#352812; --ok:#73C493; --ok-soft:#173022;
-  --info:#97AEEA; --info-soft:#1E2740; --noise:#7F8E8A; color-scheme:dark}
+  --info:#97AEEA; --info-soft:#1E2740; --ai:#C4A2F0; --ai-soft:#2A2038; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
-.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:grid;gap:28px}
+.wrap{max-width:1140px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:grid;gap:24px}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:.005em}
-h1{font-size:2rem;line-height:1.1}
-h2{font-size:1.3rem}
-h3{font-size:1.05rem}
+h1{font-size:2rem;line-height:1.1} h2{font-size:1.3rem} h3{font-size:1.05rem}
 p{margin:0}
-.lede{color:var(--muted);max-width:68ch}
+.lede{color:var(--muted);max-width:72ch}
 .eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-code,.mono{font-family:var(--f-mono);font-size:.88em}
-header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
-header.top .t{display:grid;gap:8px;min-width:0}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+.hint{font-size:.84rem;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.between{justify-content:space-between}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;display:grid;gap:16px;min-width:0}
+.panel > .ph{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.stage{font-family:var(--f-mono);font-size:.75rem;color:var(--accent);font-weight:600;margin-right:8px}
+button{font:inherit;font-weight:500;font-size:.86rem;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.ai{background:var(--ai-soft);border-color:var(--ai);color:var(--ai)}
+button.danger{border-color:var(--err);color:var(--err)}
+button.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline;font-weight:500}
+button:hover:not([disabled]){border-color:var(--accent)}
+button[disabled]{opacity:.55;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=text],input[type=search],select,textarea{font:inherit;font-size:.86rem;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+textarea{font-family:var(--f-mono);font-size:.8rem;min-height:90px;resize:vertical}
+input[type=file]{font-size:.85rem;max-width:100%}
+label.f{display:grid;gap:4px;font-size:.78rem;color:var(--muted);min-width:0}
+/* tabs */
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+@media (max-width:760px){.pipe{grid-template-columns:1fr}}
+.pstep{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:2px;background:var(--surface);min-width:0}
+.pstep b{font-family:var(--f-display);font-size:.98rem}
+.pstep span{font-size:.78rem;color:var(--muted)}
+.pstep .n{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.pstep.done{border-color:var(--ok);background:var(--ok-soft)} .pstep.done .n{color:var(--ok)}
+.pstep.attn{border-color:var(--warn);background:var(--warn-soft)} .pstep.attn .n{color:var(--warn)}
+.pstep.ai{border-color:var(--ai);background:var(--ai-soft)} .pstep.ai .n{color:var(--ai)}
+/* intake */
 .intake{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
 @media (max-width:760px){.intake{grid-template-columns:1fr}}
 .drop{border:1.5px dashed var(--line);border-radius:8px;padding:18px;display:grid;gap:10px;align-content:start;background:var(--sunk)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
-textarea{width:100%;min-height:110px;resize:vertical;font-family:var(--f-mono);font-size:.8rem;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button,.btn{font:inherit;font-weight:500;font-size:.88rem;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
-button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-button:hover{border-color:var(--accent)}
-button:focus-visible,summary:focus-visible,input:focus-visible,textarea:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-button[disabled]{opacity:.55;cursor:default}
-input[type=file]{font-size:.85rem;max-width:100%}
-.loaded{display:flex;flex-wrap:wrap;gap:6px}
 .tag{font-family:var(--f-mono);font-size:.72rem;padding:3px 8px;border-radius:99px;background:var(--sunk);border:1px solid var(--line);color:var(--muted)}
-/* summary strip */
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.fact{background:var(--surface);padding:12px 14px;display:grid;gap:2px;min-width:0}
-.fact b{font-family:var(--f-mono);font-weight:500;font-size:.95rem;overflow-wrap:anywhere}
-.fact span{font-size:.75rem;color:var(--muted)}
-.rc{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-weight:600;padding:2px 10px;border-radius:99px;font-size:.9rem;width:max-content}
-.rc.s0{background:var(--ok-soft);color:var(--ok)} .rc.s4{background:var(--warn-soft);color:var(--warn)} .rc.s8,.rc.s12{background:var(--err-soft);color:var(--err)}
-.bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--sunk)}
-.bar i{display:block;height:100%}
-.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.8rem;color:var(--muted)}
-.legend em{font-style:normal;display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font-family:var(--f-mono);font-size:.8rem;padding:4px 9px;border-radius:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
-.chip.diag{border-color:var(--err);color:var(--err);background:var(--err-soft);font-weight:600}
-.chip.sel{outline:2px solid var(--accent);outline-offset:1px}
-.hint{font-size:.82rem;color:var(--muted)}
-/* diagnosis */
-.verdict{display:grid;grid-template-columns:6px 1fr;gap:16px;align-items:stretch}
-.verdict .stripe{border-radius:3px;background:var(--err)}
-.verdict.warn .stripe{background:var(--warn)} .verdict.ok .stripe{background:var(--ok)}
-.verdict .body{display:grid;gap:8px;min-width:0}
-.verdict h3{font-size:1.35rem}
-.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
-@media (max-width:860px){.grid2{grid-template-columns:1fr}}
-.meter{display:grid;gap:8px}
-.cells{display:flex;flex-wrap:wrap;gap:3px;position:relative}
-.cell{width:26px;height:26px;border-radius:4px;display:grid;place-items:center;font-family:var(--f-mono);font-size:.68rem;background:var(--accent-soft);color:var(--accent)}
-.cell.fixed{background:var(--sunk);color:var(--muted)}
-.cell.over{background:var(--err);color:var(--surface);font-weight:600}
-.cell.limit{box-shadow:3px 0 0 0 var(--err)}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
-table{border-collapse:collapse;width:100%;font-size:.84rem}
-th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-family:var(--f-mono);font-weight:500;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--sunk)}
-tr:last-child td{border-bottom:0}
-td.num{font-variant-numeric:tabular-nums;color:var(--muted);width:2.5em}
-td.f{font-family:var(--f-mono);white-space:nowrap}
-.pill{font-family:var(--f-mono);font-size:.68rem;padding:1px 7px;border-radius:99px;white-space:nowrap}
-.pill.key{background:var(--accent-soft);color:var(--accent)} .pill.over{background:var(--err-soft);color:var(--err)} .pill.nk{background:var(--sunk);color:var(--muted)}
-.msgs{display:grid;gap:6px}
-.msg{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:8px 10px;border-radius:6px;background:var(--sunk);min-width:0}
-.msg .sev{font-family:var(--f-mono);font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-top:2px}
-.sev.error{background:var(--err);color:var(--surface)} .sev.warning{background:var(--warn);color:var(--surface)}
-.sev.info{background:var(--info);color:var(--surface)} .sev.noise{background:var(--line);color:var(--muted)}
-.msg .txt{display:grid;gap:2px;min-width:0}
-.msg .line{font-family:var(--f-mono);font-size:.78rem;overflow-wrap:anywhere}
-.msg .why{font-size:.82rem;color:var(--muted)}
+/* facts */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.fact{background:var(--surface);padding:10px 12px;display:grid;gap:2px;min-width:0}
+.fact b{font-family:var(--f-mono);font-weight:500;font-size:.92rem;overflow-wrap:anywhere}
+.fact span{font-size:.74rem;color:var(--muted)}
+.rc{display:inline-flex;font-family:var(--f-mono);font-weight:600;padding:2px 10px;border-radius:99px;font-size:.85rem;white-space:nowrap}
+.rc.g{background:var(--ok-soft);color:var(--ok)} .rc.w{background:var(--warn-soft);color:var(--warn)} .rc.e{background:var(--err-soft);color:var(--err)} .rc.u{background:var(--sunk);color:var(--muted)}
+.logcard{border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}
+/* findings */
+.find{display:grid;grid-template-columns:5px 1fr;gap:14px;padding:14px;border:1px solid var(--line);border-radius:8px;min-width:0}
+.find .stripe{border-radius:3px;background:var(--err)}
+.find.warning .stripe{background:var(--warn)} .find.info .stripe{background:var(--info)} .find.symptom .stripe{background:var(--line)}
+.find .body{display:grid;gap:8px;min-width:0}
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-family:var(--f-mono);font-size:.68rem;padding:2px 8px;border-radius:99px;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.pill.team{background:var(--ai-soft);color:var(--ai)} .pill.seen{background:var(--accent-soft);color:var(--accent)}
+.pill.error{background:var(--err-soft);color:var(--err)} .pill.warning{background:var(--warn-soft);color:var(--warn)} .pill.info{background:var(--info-soft);color:var(--info)}
+.line{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);padding:6px 8px;border-radius:5px;overflow-wrap:anywhere}
+ol.steps{margin:0;padding-left:1.3em;display:grid;gap:6px;max-width:80ch}
+ol.steps li::marker{font-family:var(--f-mono);color:var(--accent);font-weight:600}
 details{border-top:1px solid var(--line);padding-top:10px}
 summary{cursor:pointer;font-weight:500;font-size:.9rem}
-ol.steps{margin:0;padding-left:1.3em;display:grid;gap:8px;max-width:75ch}
-ol.steps li::marker{font-family:var(--f-mono);color:var(--accent);font-weight:600}
-.ai{display:grid;gap:10px}
-.ai-out{white-space:pre-wrap;font-size:.9rem;background:var(--sunk);border-radius:8px;padding:14px;max-height:520px;overflow:auto;min-height:3em}
-.empty{padding:22px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:.9rem}
-.kb td:first-child{font-family:var(--f-mono);font-size:.75rem;white-space:nowrap}
+.cells{display:flex;flex-wrap:wrap;gap:3px}
+.cell{width:24px;height:24px;border-radius:4px;display:grid;place-items:center;font-family:var(--f-mono);font-size:.66rem;background:var(--accent-soft);color:var(--accent)}
+.cell.fixed{background:var(--sunk);color:var(--muted)} .cell.over{background:var(--err);color:var(--surface);font-weight:600}
+/* unknowns */
+.unk{border:1px solid var(--warn);border-radius:8px;padding:14px;display:grid;gap:10px;background:var(--surface);min-width:0}
+.draft{border:1px solid var(--ai);border-radius:8px;padding:14px;display:grid;gap:10px;background:var(--ai-soft);min-width:0}
+.formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.formgrid .wide{grid-column:1/-1}
+@media (max-width:760px){.formgrid{grid-template-columns:1fr}}
+.ok{color:var(--ok)} .bad{color:var(--err)}
+.empty{padding:20px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:.9rem}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-weight:500;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--sunk);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.m{font-family:var(--f-mono);font-size:.78rem}
+.notice{padding:10px 12px;border-radius:6px;background:var(--info-soft);color:var(--ink);font-size:.86rem}
+.notice.warn{background:var(--warn-soft)}
 .toast{font-size:.8rem;color:var(--ok)}
-@media (prefers-reduced-motion:no-preference){.chip,button{transition:border-color .15s,background .15s}}
+.ticket{min-height:200px}
+@media (prefers-reduced-motion:no-preference){button{transition:border-color .15s,background .15s}}
 </style>
 
 <div class="wrap">
-  <header class="top">
-    <div class="t">
-      <span class="eyebrow">Basis · CTS · Import step diagnostics</span>
-      <h1>Transport Import Triage</h1>
-      <p class="lede">Drop an import log and the matching SE11 activation logs. The page finds the objects that failed, separates real errors from namespace noise, and gives the fix in order. Logs stay in your browser.</p>
-    </div>
+  <header style="display:grid;gap:8px">
+    <span class="eyebrow">Basis · CTS · Import diagnostics that learn</span>
+    <h1>Transport Import Triage</h1>
+    <p class="lede">Drop any transport log. Known errors get their fix straight from the team's knowledge base. For errors the tool hasn't seen, you choose whether to ask AI. Once a diagnosis is approved, the tool recognises that error from then on.</p>
   </header>
 
-  <section class="panel" aria-labelledby="h-intake">
-    <div class="row" style="justify-content:space-between">
-      <h2 id="h-intake">Logs</h2>
-      <div class="row">
-        <button id="btnExample" type="button">Load DS4K904917 example</button>
-        <button id="btnClear" type="button">Clear</button>
-      </div>
-    </div>
-    <div class="intake">
-      <div class="drop" id="drop">
-        <strong>Drop files here</strong>
-        <span class="hint">STMS/SE01 import logs (.xlsx export, .txt, or raw <code>/usr/sap/trans/log</code> files) and SE11 activation logs. Several at once is fine.</span>
-        <input type="file" id="file" multiple accept=".xlsx,.xls,.txt,.log,.csv,*">
-      </div>
-      <div style="display:grid;gap:8px;min-width:0">
-        <label for="paste" class="hint">Or paste log text</label>
-        <textarea id="paste" placeholder="Paste an import log or activation log…"></textarea>
-        <div class="row"><button class="primary" id="btnPaste" type="button">Analyze pasted text</button></div>
-      </div>
-    </div>
-    <div class="loaded" id="loaded"></div>
-  </section>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" id="tab-triage" aria-selected="true" data-view="triage">Triage</button>
+    <button type="button" role="tab" id="tab-kb" aria-selected="false" data-view="kb">Knowledge base</button>
+    <button type="button" role="tab" id="tab-history" aria-selected="false" data-view="history">Case history</button>
+  </nav>
 
-  <section class="panel" id="secImport" aria-labelledby="h-import"></section>
-  <section class="panel" id="secDiag" aria-labelledby="h-diag"></section>
-  <section class="panel" id="secTicket" aria-labelledby="h-ticket"></section>
-  <section class="panel" id="secAI" aria-labelledby="h-ai" hidden></section>
+  <div id="viewTriage" style="display:grid;gap:24px">
+    <div class="pipe" id="pipe" aria-label="Analysis pipeline"></div>
 
-  <section class="panel" aria-labelledby="h-kb">
-    <h2 id="h-kb">What the analyzer recognises</h2>
-    <p class="hint">Each log line is matched against these rules. Lines that match nothing are kept and can be sent to Claude.</p>
-    <div class="tablewrap"><table class="kb" id="kbTable"></table></div>
-  </section>
+    <section class="panel" aria-labelledby="h-read">
+      <div class="ph"><h2 id="h-read"><span class="stage">1</span>Read the logs</h2>
+        <div class="row">
+          <button type="button" id="btnEx1">Example: DS4K904917 (condition tables)</button>
+          <button type="button" id="btnEx2">Example: generation error (synthetic)</button>
+          <button type="button" id="btnClear">Clear</button>
+        </div></div>
+      <div class="intake">
+        <div class="drop" id="drop">
+          <strong>Drop log files here</strong>
+          <span class="hint">Any tp step log from <code>/usr/sap/trans/log</code> (H, A, I, R, G…), STMS or SE01 log exports (.xlsx or .txt), SE11 activation logs, ALOG/SLOG extracts. Several at once is fine. Files are read in your browser.</span>
+          <input type="file" id="file" multiple>
+        </div>
+        <div style="display:grid;gap:8px;min-width:0">
+          <label for="paste" class="hint">Or paste log text</label>
+          <textarea id="paste" placeholder="Paste a transport log…"></textarea>
+          <div class="row"><button class="primary" id="btnPaste" type="button">Analyze pasted text</button></div>
+        </div>
+      </div>
+      <div class="row" id="loaded"></div>
+    </section>
+
+    <section class="panel" id="secUnderstand" aria-labelledby="h-und"></section>
+    <section class="panel" id="secKnown" aria-labelledby="h-known"></section>
+    <section class="panel" id="secUnknown" aria-labelledby="h-unk"></section>
+    <section class="panel" id="secRemember" aria-labelledby="h-rem"></section>
+  </div>
+
+  <div id="viewKb" hidden style="display:grid;gap:24px"></div>
+  <div id="viewHistory" hidden style="display:grid;gap:24px"></div>
 </div>
 
 <script>
 const SAMPLE_TR = "Log File                 /usr/sap/trans/log/DS4R904917.QS4\n\n\nI1 I2 I3 ED Log Text\n\n######################################\nExecution of programs after import (XPRA)\nTransport request   : DS4K904917\nSystem              : QS4\ntp path             : tp\nVersion and release: 381.588.09 793\n\n\nPost-import methods for change/transport request: DS4K904917\n\nPost-import method RV_COND_TABLE_GEN_ACT_METHOD started for VKOS L, date and time: 20261003125630\nTable generator started\nTable A9CE has been saved\nMessage from the Data Dictionary:\nTable A9CE activated\nTable generator started\nTable A9CG has been saved\nMessage from the Data Dictionary:\nTable A9CG activated\nTable generator started\nTable A9DA has been saved\nMessage from the Data Dictionary:\nTable A9DA activated\nTable generator started\nTable A9DD has been saved\nMessage from the Data Dictionary:\nTable A9DD activated\nTable generator started\nTable A9DP has been saved\nMessage from the Data Dictionary:\nTable A9DP activated\nTable generator started\nTable A9DR has been saved\nMessage from the Data Dictionary:\nTable A9DR activated\nTable generator started\nTable A9DS has been saved\nMessage from the Data Dictionary:\nTable A9DS activated\nTable generator started\nTable A9DT has been saved\nMessage from the Data Dictionary:\nTable A9DT activated\nTable generator started\nTable A9DU has been saved\nMessage from the Data Dictionary:\nTable A9DU activated\nTable generator started\nTable A9EA has been saved\nMessage from the Data Dictionary:\nTable A9EA activated\nTable generator started\nTable A9EB has been saved\nMessage from the Data Dictionary:\nTable A9EB activated\nTable generator started\nTable A9EC has been saved\nMessage from the Data Dictionary:\nTable A9EC activated\nTable generator started\nTable A9ED has been saved\nMessage from the Data Dictionary:\nTable A9ED activated\nTable generator started\nTable A9EE has been saved\nMessage from the Data Dictionary:\nTable A9EE activated\nTable generator started\nTable A9EF has been saved\nMessage from the Data Dictionary:\nTable A9EF activated\nTable generator started\nTable A9EG has been saved\nMessage from the Data Dictionary:\nTable A9EG activated\nTable generator started\nTable A9EH has been saved\nMessage from the Data Dictionary:\nTable A9EH activated\nTable generator started\nTable A9EI has been saved\nMessage from the Data Dictionary:\nTable A9EI activated\nTable generator started\nTable A9EJ has been saved\nMessage from the Data Dictionary:\nTable A9EJ activated\nTable generator started\nTable A9EK has been saved\nMessage from the Data Dictionary:\nTable A9EK activated\nTable generator started\nTable A9EL has been saved\nMessage from the Data Dictionary:\nTable A9EL activated\nTable generator started\nTable A9EM has been saved\nMessage from the Data Dictionary:\nTable A9EM activated\nTable generator started\nTable A9EN has been saved\nMessage from the Data Dictionary:\nTable A9EN activated\nTable generator started\nTable A9EO has been saved\nMessage from the Data Dictionary:\nTable A9EO activated\nTable generator started\nTable A9EP has been saved\nMessage from the Data Dictionary:\nTable A9EP activated\nTable generator started\nTable A9EQ has been saved\nMessage from the Data Dictionary:\nTable A9EQ activated\nTable generator started\nTable A9HA has been saved\nMessage from the Data Dictionary:\nTable A9HA activated\nTable generator started\nTable A9HB has been saved\nMessage from the Data Dictionary:\nTable A9HB activated\nTable generator started\nTable A9HC has been saved\nMessage from the Data Dictionary:\nTable A9HC activated\nTable generator started\nTable A9HD has been saved\nMessage from the Data Dictionary:\nTable A9HD activated\nTable generator started\nTable A9HE has been saved\nMessage from the Data Dictionary:\nTable A9HE activated\nTable generator started\nTable A9HH has been saved\nMessage from the Data Dictionary:\nTable A9HH activated\nTable generator started\nTable A9HI has been saved\nMessage from the Data Dictionary:\nTable A9HI activated\nTable generator started\nTable A9HJ has been saved\nMessage from the Data Dictionary:\nTable A9HJ activated\nTable generator started\nTable A9HK has been saved\nMessage from the Data Dictionary:\nTable A9HK activated\nTable generator started\nTable A9HL has been saved\nMessage from the Data Dictionary:\nTable A9HL activated\nTable generator started\nTable A9HM has been saved\nMessage from the Data Dictionary:\nTable A9HM activated\nTable generator started\nTable A9HN has been saved\nMessage from the Data Dictionary:\nTable A9HN activated\nTable generator started\nTable A9HO has been saved\nMessage from the Data Dictionary:\nTable A9HO activated\nTable generator started\nTable A9HP has been saved\nMessage from the Data Dictionary:\nTable A9HP activated\nTable generator started\nTable A9HQ has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9HR has been saved\nMessage from the Data Dictionary:\nTable A9HR activated\nTable generator started\nTable A9HS has been saved\nMessage from the Data Dictionary:\nTable A9HS activated\nTable generator started\nTable A9HT has been saved\nMessage from the Data Dictionary:\nTable A9HT activated\nTable generator started\nTable A9HU has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9HV has been saved\nMessage from the Data Dictionary:\nTable A9HV activated\nTable generator started\nTable A9IA has been saved\nMessage from the Data Dictionary:\nTable A9IA activated\nTable generator started\nTable A9IB has been saved\nMessage from the Data Dictionary:\nTable A9IB activated\nTable generator started\nTable A9IC has been saved\nMessage from the Data Dictionary:\nTable A9IC activated\nTable generator started\nTable A9ID has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9IE has been saved\nMessage from the Data Dictionary:\nTable A9IE activated\nTable generator started\nTable A9IF has been saved\nMessage from the Data Dictionary:\nTable A9IF activated\nTable generator started\nTable A9IG has been saved\nMessage from the Data Dictionary:\nTable A9IG activated\nTable generator started\nTable A9IH has been saved\nMessage from the Data Dictionary:\nTable A9IH activated\nTable generator started\nTable A9II has been saved\nMessage from the Data Dictionary:\nTable A9II activated\nTable generator started\nTable A9IJ has been saved\nMessage from the Data Dictionary:\nTable A9IJ activated\nTable generator started\nTable A9IK has been saved\nMessage from the Data Dictionary:\nTable A9IK activated\nTable generator started\nTable A9IL has been saved\nMessage from the Data Dictionary:\nTable A9IL activated\nTable generator started\nTable A9IM has been saved\nMessage from the Data Dictionary:\nTable A9IM activated\nTable generator started\nTable A9IN has been saved\nMessage from the Data Dictionary:\nTable A9IN activated\nTable generator started\nTable A9IO has been saved\nMessage from the Data Dictionary:\nTable A9IO activated\nTable generator started\nTable A9IP has been saved\nMessage from the Data Dictionary:\nTable A9IP activated\nTable generator started\nTable A9IQ has been saved\nMessage from the Data Dictionary:\nTable A9IQ activated\nTable generator started\nTable A9IR has been saved\nMessage from the Data Dictionary:\nTable A9IR activated\nTable generator started\nTable A9IS has been saved\nMessage from the Data Dictionary:\nTable A9IS activated\nTable generator started\nTable A9IT has been saved\nMessage from the Data Dictionary:\nTable A9IT activated\nTable generator started\nTable A9IU has been saved\nMessage from the Data Dictionary:\nTable A9IU activated\nTable generator started\nTable A9IV has been saved\nMessage from the Data Dictionary:\nTable A9IV activated\nTable generator started\nTable A9JA has been saved\nMessage from the Data Dictionary:\nTable A9JA activated\nTable generator started\nTable A9JB has been saved\nMessage from the Data Dictionary:\nTable A9JB activated\nTable generator started\nTable A9JC has been saved\nMessage from the Data Dictionary:\nTable A9JC activated\nTable generator started\nTable A9JD has been saved\nMessage from the Data Dictionary:\nTable A9JD activated\nTable generator started\nTable A9JE has been saved\nMessage from the Data Dictionary:\nTable A9JE activated\nTable generator started\nTable A9JF has been saved\nMessage from the Data Dictionary:\nTable A9JF activated\nTable generator started\nTable A9JG has been saved\nMessage from the Data Dictionary:\nTable A9JG activated\nTable generator started\nTable A9JH has been saved\nMessage from the Data Dictionary:\nTable A9JH activated\nTable generator started\nTable A9JI has been saved\nMessage from the Data Dictionary:\nTable A9JI activated\nTable generator started\nTable A9JJ has been saved\nMessage from the Data Dictionary:\nTable A9JJ activated\nTable generator started\nTable A9JK has been saved\nMessage from the Data Dictionary:\nTable A9JK activated\nTable generator started\nTable A9JL has been saved\nMessage from the Data Dictionary:\nTable A9JL activated\nTable generator started\nTable A9JM has been saved\nMessage from the Data Dictionary:\nTable A9JM activated\nTable generator started\nTable A9JN has been saved\nMessage from the Data Dictionary:\nTable A9JN activated\nTable generator started\nTable A9JO has been saved\nMessage from the Data Dictionary:\nTable A9JO activated\nTable generator started\nTable A9JP has been saved\nMessage from the Data Dictionary:\nTable A9JP activated\nTable generator started\nTable A9JQ has been saved\nMessage from the Data Dictionary:\nTable A9JQ activated\nTable generator started\nTable A9JR has been saved\nMessage from the Data Dictionary:\nTable A9JR activated\nTable generator started\nTable A9JS has been saved\nMessage from the Data Dictionary:\nTable A9JS activated\nTable generator started\nTable A9JT has been saved\nMessage from the Data Dictionary:\nTable A9JT activated\nTable generator started\nTable A9JU has been saved\nMessage from the Data Dictionary:\nTable A9JU activated\nTable generator started\nTable A9JV has been saved\nMessage from the Data Dictionary:\nTable A9JV activated\nTable generator started\nTable A9KA has been saved\nMessage from the Data Dictionary:\nTable A9KA activated\nTable generator started\nTable A9KB has been saved\nMessage from the Data Dictionary:\nTable A9KB activated\nTable generator started\nTable A9KC has been saved\nMessage from the Data Dictionary:\nTable A9KC activated\nTable generator started\nTable A9KD has been saved\nMessage from the Data Dictionary:\nTable A9KD activated\nTable generator started\nTable A9KE has been saved\nMessage from the Data Dictionary:\nTable A9KE activated\nTable generator started\nTable A9KF has been saved\nMessage from the Data Dictionary:\nTable A9KF activated\nTable generator started\nTable A9KG has been saved\nMessage from the Data Dictionary:\nTable A9KG activated\nTable generator started\nTable A9KH has been saved\nMessage from the Data Dictionary:\nTable A9KH activated\nTable generator started\nTable A9KI has been saved\nMessage from the Data Dictionary:\nTable A9KI activated\nTable generator started\nTable A9KJ has been saved\nMessage from the Data Dictionary:\nTable A9KJ activated\nTable generator started\nTable A9KK has been saved\nMessage from the Data Dictionary:\nTable A9KK activated\nTable generator started\nTable A9KL has been saved\nMessage from the Data Dictionary:\nTable A9KL activated\nTable generator started\nTable A9KM has been saved\nMessage from the Data Dictionary:\nTable A9KM activated\nTable generator started\nTable A9KN has been saved\nMessage from the Data Dictionary:\nTable A9KN activated\nTable generator started\nTable A9KO has been saved\nMessage from the Data Dictionary:\nTable A9KO activated\nTable generator started\nTable A9KP has been saved\nMessage from the Data Dictionary:\nTable A9KP activated\nTable generator started\nTable A9KQ has been saved\nMessage from the Data Dictionary:\nTable A9KQ activated\nTable generator started\nTable A9KR has been saved\nMessage from the Data Dictionary:\nTable A9KR activated\nTable generator started\nTable A9KS has been saved\nMessage from the Data Dictionary:\nTable A9KS activated\nTable generator started\nTable A9KT has been saved\nMessage from the Data Dictionary:\nTable A9KT activated\nTable generator started\nTable A9KU has been saved\nMessage from the Data Dictionary:\nTable A9KU activated\nTable generator started\nTable A9KV has been saved\nMessage from the Data Dictionary:\nTable A9KV activated\nTable generator started\nTable A9LA has been saved\nMessage from the Data Dictionary:\nTable A9LA activated\nTable generator started\nTable A9LB has been saved\nMessage from the Data Dictionary:\nTable A9LB activated\nTable generator started\nTable A9LC has been saved\nMessage from the Data Dictionary:\nTable A9LC activated\nTable generator started\nTable A9LD has been saved\nMessage from the Data Dictionary:\nTable A9LD activated\nTable generator started\nTable A9LE has been saved\nMessage from the Data Dictionary:\nTable A9LE activated\nTable generator started\nTable A9LF has been saved\nMessage from the Data Dictionary:\nTable A9LF activated\nTable generator started\nTable A9LG has been saved\nMessage from the Data Dictionary:\nTable A9LG activated\nTable generator started\nTable A9LH has been saved\nMessage from the Data Dictionary:\nTable A9LH activated\nTable generator started\nTable A9LI has been saved\nMessage from the Data Dictionary:\nTable A9LI activated\nTable generator started\nTable A9LJ has been saved\nMessage from the Data Dictionary:\nTable A9LJ activated\nTable generator started\nTable A9LK has been saved\nMessage from the Data Dictionary:\nTable A9LK activated\nTable generator started\nTable A9LL has been saved\nMessage from the Data Dictionary:\nTable A9LL activated\nTable generator started\nTable A9LM has been saved\nMessage from the Data Dictionary:\nTable A9LM activated\nTable generator started\nTable A9LN has been saved\nMessage from the Data Dictionary:\nTable A9LN activated\nTable generator started\nTable A9LO has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9LP has been saved\nMessage from the Data Dictionary:\nTable A9LP activated\nTable generator started\nTable A9LQ has been saved\nMessage from the Data Dictionary:\nTable A9LQ activated\nTable generator started\nTable A9LR has been saved\nMessage from the Data Dictionary:\nTable A9LR activated\nTable generator started\nTable A9LS has been saved\nMessage from the Data Dictionary:\nTable A9LS activated\nTable generator started\nTable A9LT has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9LU has been saved\nMessage from the Data Dictionary:\nTable A9LU activated\nTable generator started\nTable A9LV has been saved\nMessage from the Data Dictionary:\nTable A9LV activated\nTable generator started\nTable A9MA has been saved\nMessage from the Data Dictionary:\nTable A9MA activated\nTable generator started\nTable A9MB has been saved\nMessage from the Data Dictionary:\nTable A9MB activated\nTable generator started\nTable A9MC has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9MD has been saved\nMessage from the Data Dictionary:\nTable A9MD activated\nTable generator started\nTable A9ME has been saved\nMessage from the Data Dictionary:\nTable A9ME activated\nTable generator started\nTable A9MF has been saved\nMessage from the Data Dictionary:\nTable A9MF activated\nTable generator started\nTable A9MG has been saved\nMessage from the Data Dictionary:\nTable A9MG activated\nTable generator started\nTable A9MH has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9MI has been saved\nMessage from the Data Dictionary:\nTable A9MI activated\nTable generator started\nTable A9MJ has been saved\nMessage from the Data Dictionary:\nTable A9MJ activated\nTable generator started\nTable A9MK has been saved\nMessage from the Data Dictionary:\nTable A9MK activated\nTable generator started\nTable A9ML has been saved\nMessage from the Data Dictionary:\nTable A9ML activated\nTable generator started\nTable A9MM has been saved\nMessage from the Data Dictionary:\nTable A9MM activated\nTable generator started\nTable A9MN has been saved\nMessage from the Data Dictionary:\nTable A9MN activated\nTable generator started\nTable A9MO has been saved\nMessage from the Data Dictionary:\nTable A9MO activated\nTable generator started\nTable A9MP has been saved\nMessage from the Data Dictionary:\nTable A9MP activated\nTable generator started\nTable A9MQ has been saved\nMessage from the Data Dictionary:\nTable A9MQ activated\nTable generator started\nTable A9MR has been saved\nMessage from the Data Dictionary:\nTable A9MR activated\nTable generator started\nTable A9MS has been saved\nMessage from the Data Dictionary:\nTable A9MS activated\nTable generator started\nTable A9MT has been saved\nMessage from the Data Dictionary:\nTable A9MT activated\nTable generator started\nTable A9MU has been saved\nMessage from the Data Dictionary:\nTable A9MU activated\nTable generator started\nTable A9MV has been saved\nMessage from the Data Dictionary:\nTable A9MV activated\nTable generator started\nTable A9NA has been saved\nMessage from the Data Dictionary:\nTable A9NA activated\nTable generator started\nTable A9NB has been saved\nMessage from the Data Dictionary:\nTable A9NB activated\nTable generator started\nTable A9NC has been saved\nMessage from the Data Dictionary:\nTable A9NC activated\nTable generator started\nTable A9ND has been saved\nMessage from the Data Dictionary:\nTable A9ND activated\nTable generator started\nTable A9NE has been saved\nMessage from the Data Dictionary:\nTable A9NE activated\nTable generator started\nTable A9NF has been saved\nMessage from the Data Dictionary:\nTable A9NF activated\nTable generator started\nTable A9NG has been saved\nMessage from the Data Dictionary:\nTable A9NG activated\nTable generator started\nTable A9NH has been saved\nMessage from the Data Dictionary:\nTable A9NH activated\nTable generator started\nTable A9NI has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NJ has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NK has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NL has been saved\nMessage from the Data Dictionary:\nTable A9NL activated\nTable generator started\nTable A9NM has been saved\nMessage from the Data Dictionary:\nTable A9NM activated\nTable generator started\nTable A9NN has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NO has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NP has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NQ has been saved\nMessage from the Data Dictionary:\nTable A9NQ activated\nTable generator started\nTable A9NR has been saved\nMessage from the Data Dictionary:\nTable A9NR activated\nTable generator started\nTable A9NS has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NT has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NU has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NV has been saved\nMessage from the Data Dictionary:\nTable A9NV activated\nTable generator started\nTable A9OA has been saved\nMessage from the Data Dictionary:\nTable A9OA activated\nTable generator started\nTable A9OB has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9OC has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9OD has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9OE has been saved\nMessage from the Data Dictionary:\nTable A9OE activated\nTable generator started\nTable A9OF has been saved\nMessage from the Data Dictionary:\nTable A9OF activated\nTable generator started\nTable A9OG has been saved\nMessage from the Data Dictionary:\nTable A9OG activated\nTable generator started\nTable A9OH has been saved\nMessage from the Data Dictionary:\nTable A9OH activated\nTable generator started\nTable A9OI has been saved\nMessage from the Data Dictionary:\nTable A9OI activated\nTable generator started\nTable A9OJ has been saved\nMessage from the Data Dictionary:\nTable A9OJ activated\nTable generator started\nTable A9OK has been saved\nMessage from the Data Dictionary:\nTable A9OK activated\nTable generator started\nTable A9OL has been saved\nMessage from the Data Dictionary:\nTable A9OL activated\nTable generator started\nTable A9OM has been saved\nMessage from the Data Dictionary:\nTable A9OM activated\nTable generator started\nTable A9ON has been saved\nMessage from the Data Dictionary:\nTable A9ON activated\nTable generator started\nTable A9OO has been saved\nMessage from the Data Dictionary:\nTable A9OO activated\nTable generator started\nTable A9OP has been saved\nMessage from the Data Dictionary:\nTable A9OP activated\nErrors occurred during post-handling RV_COND_TABLE_GEN_ACT_METHOD for VKOS L\nRV_COND_TABLE_GEN_ACT_METHOD belongs to package VKON\nThe errors affect the following components:\nSD-MD-CM (Conditions)\nPost-import method RV_COND_TABLE_GEN_ACT_METHOD completed for VKOS L, date and time: 20261003125841\nPost-import methods of change/transport request DS4K904917 completed\nStart of subsequent processing ... 20261003125630\nEnd of subsequent processing... 20261003125841\n\nExecute reports for change/transport request: DS4K904917\n\nNo XCLA conversions exist for execution\nXCLAs for change request/transport request DS4K904917 were executed\n\nThere are no XPRA reports to execute\n\nReports for change/transport request DS4K904917 have been executed\nStart of................ 20261003125841\nEnd of.................. 20261003125841\nExecution of programs after import (XPRA)\nEnd date and time : 20261003125841\nEnded with return code:  ===> 8 <===\n######################################";
 const SAMPLE_ACT = "U30695020261003131953\n\n\nI1 I2 I3 ED Log Text\n\n=========================================================================\nActivation of worklist (U306950 / 03.10.2026 / 13:19:54 /)\n=========================================================================\n\nTechnical log for mass activation\nSee log U30695020261003131953:ACT\n\nTABL A9HU was not activated\nCheck table A9HU (U306950/03.10.26/13:19)\nTable A9HU has more than 16 key fields\nField name MANDT can be passed to this system; do not use it\nField name KAPPL can be passed to this system; do not use it\nField name KSCHL can be passed to this system; do not use it\nField name COCO_NUM can be passed to this system; do not use it\nField name ZZ1_ADJNO_PCI can already exist in a subsequent system\nField name ZZ1_ORDSUFFIX_PCI can already exist in a subsequent system\nField name ZZ1_STOCK_BLD_BY_DTE_PCI can already exist in a subsequent system\nField name ZZ1_STOCK_BLD_AFTR_DTE_PCI can already exist in a subsequent system\nField name PRODH3 can be passed to this system; do not use it\nField name LAND1 can be passed to this system; do not use it\nField name BZIRK can be passed to this system; do not use it\nField name KVGR3 can be passed to this system; do not use it\nField name ZZ1_FETR_CD_2_PCI can already exist in a subsequent system\nField name ZZ1_FETR_CD_3_PCI can already exist in a subsequent system\nField name ZZ1_FETR_CD_4_PCI can already exist in a subsequent system\nField name KFRST can be passed to this system; do not use it\nField name DATBI can be passed to this system; do not use it\nField name DATAB can be passed to this system; do not use it\nField name KBSTAT can be passed to this system; do not use it\nField name KNUMH can be passed to this system; do not use it\nIndex A9HU-SCT is not in the customer namespace\nTable A9HU must be created in the database\nCheck on table A9HU resulted in errors\n\n=========================================================================\nEnd of activation of worklist\n=========================================================================";
+const SAMPLE_SYN = "Log File                 /usr/sap/trans/log/DS4G905102.QS4\nI1 I2 I3 ED Log Text\n######################################\nGeneration of programs and screens\nTransport request   : DS4K905102\nSystem              : QS4\ntp path             : tp\nVersion and release: 381.588.09 793\n######################################\nProgram ZSD_OTC_PRICING_EXIT, Include ZSD_OTC_PRICING_EXIT_F01: Syntax error in line 000214\nThe type \"ZTT_OTC_SURCHARGE\" is unknown.\nEnhancement implementation ZEI_SD_PRICING could not be switched on: switch ZSW_OTC_PRICING not assigned to package ZSD_OTC\nClass ZCL_OTC_PRICE_HELPER generated\nErrors occurred during generation\nEnded with return code:  ===> 8 <===\n######################################\n";
 
 
-/* ---------- knowledge base ---------- */
-const KB = [
- {id:"KEY16", sev:"error", re:/Table (\w+) has more than 16 key fields/i, title:"More than 16 key fields",
-  explain:"The ABAP Dictionary does not allow more than 16 key fields, so the table cannot be activated or created in the database.",
-  root:true},
- {id:"KEYLEN", sev:"error", re:/key (?:length|is too long)|total length of (?:the )?key/i, title:"Key too long",
-  explain:"The combined length of the key fields is above the database limit. Use fewer or shorter key fields.", root:true},
- {id:"DEPFLD", sev:"error", re:/Field (\S+): Component type or domain used not active or does not exist/i, title:"Missing dependency",
-  explain:"A field refers to a data element or domain that isn't active in this system. Import the transport that contains it first.", root:true},
- {id:"DEPDTEL", sev:"error", re:/(?:Data element|Domain) (\S+) (?:is not active|does not exist)/i, title:"Data element or domain missing",
-  explain:"The dictionary type behind a field isn't active here. Find the request that carries it in the source system and import it first.", root:true},
- {id:"NOTEXIST", sev:"error", re:/(?:Table|Structure|Field|Append) (\S+) does not exist/i, title:"Referenced object missing",
-  explain:"Something this object depends on hasn't reached the target system. Check the import order.", root:true},
- {id:"DUPKEY", sev:"error", re:/duplicate key|DUPREC|unique constraint/i, title:"Duplicate key on import",
-  explain:"Table entries in the request collide with entries already in the target. Compare the entries (SCU0) before re-importing.", root:true},
- {id:"CONVERT", sev:"warning", re:/(?:must be|will be|is to be) converted|table conversion/i, title:"Database conversion needed",
-  explain:"The table already exists with a different structure. Check it in SE14 and the conversion log before re-importing.", root:true},
- {id:"LOCK", sev:"warning", re:/locked by|enqueue/i, title:"Object locked",
-  explain:"Someone else held a lock during import. Release the lock (SM12) and re-import."},
- {id:"POSTERR", sev:"error", re:/Errors occurred during post-handling (\S+)/i, title:"Post-import method failed",
-  explain:"The after-import method reported errors. The objects marked 'Activation was interrupted' are the ones to diagnose."},
- {id:"NOTACT", sev:"error", re:/(?:TABL|Table) (\w+) was not activated/i, title:"Not activated (symptom)",
-  explain:"Summary line. The real cause is on the other error lines for the same table."},
- {id:"CHECKERR", sev:"error", re:/Check on table (\w+) resulted in errors/i, title:"Check failed (symptom)",
-  explain:"Summary line from the dictionary check. Look for the specific error above it."},
- {id:"INTERRUPT", sev:"error", re:/Activation was interrupted/i, title:"Activation interrupted (symptom)",
-  explain:"Generic message in the import log. Open SE11 → table → Utilities → Activation Log in the target system to see the cause."},
- {id:"DBCREATE", sev:"info", re:/Table (\w+) must be created in the database/i, title:"Table not yet in database",
-  explain:"The table doesn't exist in this database yet, so this is not a conversion problem. It will be created once activation succeeds."},
- {id:"NS_SAP", sev:"noise", re:/Field name (\w+) can be passed to this system; do not use it/i, title:"SAP field name in customer table",
-  explain:"Expected for generated condition tables, which reuse SAP field names. Safe to ignore."},
- {id:"NS_CUST", sev:"noise", re:/Field name (\w+) can already exist in a subsequent system/i, title:"Customer field name warning",
-  explain:"Standard namespace warning for ZZ/ZZ1_ fields. Safe to ignore."},
- {id:"NS_INDEX", sev:"noise", re:/Index (\S+) is not in the customer namespace/i, title:"SAP index name on generated table",
-  explain:"The generator adds an SAP-named secondary index to condition tables. Safe to ignore."},
- {id:"ENHCAT", sev:"noise", re:/enhancement category/i, title:"Enhancement category warning",
-  explain:"Classification warning only. Doesn't block activation."}
+/* =====================================================================
+   Built-in rule library (read-only). The team's approved rules live in
+   the shared knowledge base and are checked first.
+   ===================================================================== */
+const CATS = ["Dictionary (DDIC)","CDS and views","Main import","Generation","Methods and XPRA","Locks","Namespace and changeability","Component versions","tp, OS and database","Symptom","Noise"];
+const STEPS = {E:"Main export",P:"Test import",H:"Dictionary import",A:"Dictionary activation",S:"Distribution of dictionary objects",N:"Conversion",M:"Enqueue object activation",I:"Main import",V:"Version flag",R:"Methods and XPRA",G:"Generation of programs and screens",X:"Export of application objects","SE11":"Activation log (SE11)","?":"Unknown step"};
+const NEXT_LOOK = {
+  H:"Check the dictionary import log for objects that weren't written, and the A (activation) log of the same request.",
+  A:"Open SE11 → object → Utilities → Activation Log in the target system for the detailed reason.",
+  I:"Compare the request's object list (SE01) with the target; check the target client settings (SCC4) for client-specific content.",
+  R:"Check ST22 for runtime errors at the import time, and the SE11 activation log for objects the method generated.",
+  G:"Open the object in SE80 in the target system and run the syntax check; the first error usually names the missing dependency.",
+  "SE11":"The lines above come straight from the dictionary check; the error lines are the cause.",
+  "?":"Check the ALOG/SLOG in /usr/sap/trans/log for tp-level errors, and run R3trans -d as <sid>adm."
+};
+const B = (id,cat,sev,re,title,cause,fix,tx=[]) => ({id,cat,sev,re,title,cause,fix,tx,source:"builtin"});
+const BUILTIN = [
+ // Dictionary
+ B("KEY16","Dictionary (DDIC)","error",/Table (\S+) has more than 16 key fields/i,"More than 16 key fields",
+   "The ABAP Dictionary allows at most 16 key fields, so the table can't be activated or created in the database in any system. Condition tables always use 5 of them (MANDT, KAPPL, KSCHL, KFRST, DATBI), leaving 11 for chosen fields.",
+   ["Fix it in the development system; re-importing won't help.","Redesign with fewer key fields (for condition tables: 11 or fewer variable fields). Split the criteria across two access steps or derive a combined field.","For condition tables: point the access sequences (V/07) to the new table, then delete the old one in the development system and transport the change after the original request.","Re-import in the target, then run RV80HGEN there."],["SE11","V/03","V/07","RV80HGEN"]),
+ B("KEYLEN","Dictionary (DDIC)","error",/key (?:length|is too long)|total length of (?:the )?key/i,"Key too long",
+   "The combined length of the key fields is above the database limit.",["Shorten or remove key fields in the development system.","Transport the corrected definition and re-import."],["SE11"]),
+ B("DEPFLD","Dictionary (DDIC)","error",/Field (\S+?):? .*Component type or domain used not active or does not exist/i,"Field type missing in target",
+   "A field refers to a data element or domain that isn't active in this system. The request that carries it hasn't been imported, or was imported later.",["Find the request with the missing type in the development system (SE03 → Search for Objects in Requests).","Import it into the target first, then re-import this request."],["SE03","STMS"]),
+ B("DEPDTEL","Dictionary (DDIC)","error",/(?:Data element|Domain) (\S+) (?:is not active|does not exist)/i,"Data element or domain missing",
+   "A dictionary type this object depends on isn't active in the target.",["Locate the request that contains it (SE03).","Import it first, then re-import this request."],["SE03","SE11"]),
+ B("TECHSET","Dictionary (DDIC)","error",/technical settings.*(?:missing|not (?:maintained|active|exist))|size category .*not|data class (\S+) .*not/i,"Technical settings missing",
+   "The table's technical settings weren't transported or aren't active.",["Check SE13 in the development system and include the technical settings in the request.","Re-import."],["SE13"]),
+ B("CONVERT","Dictionary (DDIC)","warning",/(?:must be|will be|is to be) converted|table conversion|conversion (?:of|for) (?:table )?(\S+)/i,"Database conversion needed",
+   "The table exists in the target with a different structure and must be converted.",["Check the table in SE14 and the conversion log.","Make sure no manual or partial version exists in the target; then re-import."],["SE14"]),
+ B("DBCREATE","Dictionary (DDIC)","info",/Table (\S+) must be created in the database/i,"Table not yet in database",
+   "The table doesn't exist in this database yet, so this isn't a conversion problem. It's created once activation succeeds.",[]),
+ B("NOTEXIST","Dictionary (DDIC)","error",/(?:Table|Structure|View|Append|Search help|Lock object|Type group) (\S+) does not exist/i,"Referenced object missing",
+   "Something this object depends on hasn't reached the target system yet.",["Check the import order: find the request containing the missing object and import it first.","Re-import this request."],["SE03","STMS"]),
+ // CDS
+ B("CDSACT","CDS and views","error",/(?:DDL source|DDLS|CDS view|CDS entity|data definition) (\S+).*(?:could not be activated|not activated|has errors|activation error)/i,"CDS view not activated",
+   "A CDS data definition failed activation, usually because a data source, association target or annotation reference doesn't exist yet in the target.",["Open the DDL source in ADT (or SE11 → activation log) in the target to see the failing reference.","Import the request with the referenced view, table or field first; then re-import."],["ADT","SE11"]),
+ B("CDSDEP","CDS and views","error",/(?:association|data source|entity|view) (\S+) (?:does not exist|is not active|is unknown)/i,"CDS dependency missing",
+   "A CDS view refers to an entity that isn't active in the target.",["Import the missing entity's request first.","Re-import."],["ADT"]),
+ // Main import
+ B("DUPKEY","Main import","error",/duplicate key|DUPREC|unique constraint/i,"Duplicate key on import",
+   "Table entries in the request collide with existing entries in the target.",["Compare the entries with the target (SCU0 or SCMP).","Agree with the change owner which version wins; re-import with the right options."],["SCU0","SCMP"]),
+ B("ORIGNR","Main import","error",/original object(?: (\S+))?.*not (?:been )?(?:replaced|overwritten)/i,"Original object not replaced",
+   "The target holds its own original of the object (for example it was created or repaired there), so the import didn't overwrite it.",["Check the object directory entry and original system (SE03 / TADIR) in the target.","Decide whether the target version may be overwritten; if so re-import with 'Overwrite originals'."],["SE03","STMS"]),
+ B("REPAIR","Main import","error",/repair(?:ed)? .*(?:not|cannot) be (?:overwritten|imported)|object (\S+) .*repaired/i,"Repaired object in target",
+   "The object was repaired in the target and is protected from being overwritten.",["Confirm the repair (SE03) and whether it's still needed.","Release the repair flag or re-import with the right options."],["SE03"]),
+ B("CLIENT","Main import","error",/client (\d{3}) (?:does not exist|is locked|is not (?:open|allowed|modifiable|changeable))/i,"Target client problem",
+   "Client-specific content couldn't be imported into the target client.",["Check that the target client exists and its settings (SCC4).","Re-import into the correct client (STMS → Target client)."],["SCC4","STMS"]),
+ B("NAMETAB","Main import","error",/nametab.*(?:not found|does not exist|inconsistent|missing|error)/i,"Runtime object (nametab) missing",
+   "The table's runtime object isn't there or doesn't match, so entries couldn't be written.",["Make sure the dictionary request for the table is imported and activated first (SE11 / SE14).","Re-import this request."],["SE11","SE14"]),
+ B("DBTAB","Main import","error",/(?:database )?table (\S+) (?:does not exist in the database|not found in (?:the )?database)/i,"Table missing in database",
+   "The table exists in the dictionary but not in the database of the target.",["Check in SE14 and create or adjust the database object.","Re-import."],["SE14"]),
+ // Generation
+ B("SYNTAX","Generation","error",/(?:Program|Include|Class|Function group) (\S+?)[,:]? .*Syntax error/i,"Syntax error during generation",
+   "The object doesn't compile in the target, nearly always because something it uses (type, class, include, field) is missing or older there.",["Open the object in SE80 in the target and run the syntax check; the message names the missing piece.","Import the request that contains it first (SE03 search), then re-import.","Optionally regenerate with SGEN after the fix."],["SE80","SE03","SGEN"]),
+ B("UNKNOWNTYPE","Generation","error",/(?:type|field|class|interface|method|data object|function module|include) "?([\w\/]+)"? (?:is unknown|does not exist|is not defined)/i,"Referenced type or class unknown",
+   "Code refers to a type, class or field that doesn't exist in the target yet.",["Find the request that creates it in the development system (SE03).","Import it first, then re-import this request."],["SE03","SE80"]),
+ B("GENERR","Symptom","symptom",/errors? (?:occurred )?during generation|generation errors|could not be generated|not generated/i,"Generation failed (symptom)",
+   "Summary line; the cause is on the error lines for the same objects.",[]),
+ // Methods / XPRA
+ B("DUMP","Methods and XPRA","error",/(?:runtime error|short dump|ABAP dump|ST22)\b[\s:]*'?([A-Z][A-Z_]{4,})?/i,"Runtime error during import",
+   "An after-import method or XPRA dumped.",["Find the dump in ST22 at the import time (user DDIC or the tp user).","Fix the cause it names (often missing customizing or a prerequisite request) and re-import."],["ST22"]),
+ B("XPRAERR","Methods and XPRA","error",/XPRA\b.*(?:terminated|cancel|error|failed)|(?:terminated|cancelled) .*XPRA/i,"XPRA failed",
+   "An XPRA report ended with errors.",["Read the XPRA's own log (SE01 → request → logs, or the report's application log in SLG1).","Fix and re-run the XPRA or re-import."],["SE01","SLG1"]),
+ B("POSTERR","Methods and XPRA","error",/Errors occurred during post-handling (\S+)/i,"After-import method failed",
+   "The after-import method reported errors. The objects it lists are the ones to diagnose.",["Look at the object-level messages around this line, or the SE11 activation log of each failed object."],["SE11"]),
+ // Locks
+ B("LOCK","Locks","warning",/locked by(?: user)? (\S+)|enqueue (?:error|failure|conflict)|lock table overflow/i,"Object locked during import",
+   "Someone (or another import) held a lock on the object.",["Check and release locks in SM12.","Re-import."],["SM12"]),
+ // Namespace
+ B("NSMOD","Namespace and changeability","error",/namespace (\S+) .*not (?:modifiable|changeable)|(?:not modifiable|cannot be changed).*(?:namespace|software component)/i,"Namespace not changeable",
+   "The system's change settings don't allow this namespace or software component to be changed.",["Check SE06 (system change option) and SCC4 in the target.","Adjust only per your change policy, then re-import."],["SE06","SCC4"]),
+ // Component versions
+ B("COMPVER","Component versions","error",/component version|software component .*(?:differ|mismatch|not identical)|SAP_BASIS .*(?:differ|mismatch)/i,"Component version mismatch",
+   "Source and target are on different support package levels for a component in the request.",["Compare levels in SPAM / System → Status in both systems.","Align them, or import with 'ignore invalid component version' only after review."],["SPAM","STMS"]),
+ // tp / OS / DB
+ B("DBCONN","tp, OS and database","error",/connect(?:ion)? to (?:the )?database failed|could not connect|DB-?connect|database connect(?:ion)? (?:error|failed)/i,"No database connection",
+   "tp/R3trans couldn't log on to the database.",["Run R3trans -d as <sid>adm and read trans.log.","On HANA check hdbuserstore (DEFAULT key) and the client version."],["R3trans -d"]),
+ B("FILE","tp, OS and database","error",/permission denied|cannot open|could not open|no such file|file not found|cannot (?:read|write)/i,"File or permission problem",
+   "tp couldn't read or write a file in the transport directory (data file, cofile or log).",["Check that the data and cofile exist in /usr/sap/trans and the permissions for <sid>adm.","Check the mount of /usr/sap/trans on the target host."],["AL11","OS"]),
+ B("DISK","tp, OS and database","error",/no space left|disk full|file ?system full|tablespace .*full|log (?:area|volume) full/i,"Storage full",
+   "The file system or database ran out of space during the import.",["Free or extend the affected file system or database volume.","Re-import."],["DB02","OS"]),
+ B("DBERR","tp, OS and database","error",/SQL (?:code|error)\s*:?\s*-?\d+|SQLSTATE|HANA error|ORA-\d+|dbsl/i,"Database error",
+   "The database rejected a statement during the import.",["Read the full SQL error text in the log and in ST22/SM21.","Check database traces; fix and re-import."],["ST22","SM21","DBACOCKPIT"]),
+ B("KILLED","tp, OS and database","error",/signal\s*\d+|killed|core dumped/i,"Import process killed",
+   "The tp or R3trans process was stopped by the OS or an operator.",["Check SM21 and OS logs for the time of the import.","Re-run the import once the cause is cleared."],["SM21"]),
+ // Symptoms
+ B("INTERRUPT","Symptom","symptom",/Activation was interrupted/i,"Activation interrupted (symptom)",
+   "Generic message. The reason is in the SE11 activation log of the object.",[]),
+ B("NOTACT","Symptom","symptom",/(?:TABL|Table|VIEW|DTEL|DOMA|DDLS) (\S+) was not activated/i,"Not activated (symptom)",
+   "Summary line; the cause is on the other error lines for the object.",[]),
+ B("CHECKERR","Symptom","symptom",/Check on (?:table|view) (\S+) resulted in errors/i,"Check failed (symptom)",
+   "Summary from the dictionary check; the error lines above it are the cause.",[]),
+ B("NOTIMP","Symptom","symptom",/(?:were|was) not imported|not imported/i,"Not imported (symptom)",
+   "Summary line; look for the cause next to it.",[]),
+ // Noise
+ B("NS_SAP","Noise","noise",/Field name (\S+) can be passed to this system; do not use it/i,"SAP field name in customer table","Expected for generated tables. Safe to ignore.",[]),
+ B("NS_CUST","Noise","noise",/Field name (\S+) can already exist in a subsequent system/i,"Customer field name warning","Standard namespace warning for ZZ/ZZ1_ fields. Safe to ignore.",[]),
+ B("NS_INDEX","Noise","noise",/Index (\S+) is not in the customer namespace/i,"SAP index name on generated table","Safe to ignore.",[]),
+ B("ENHCAT","Noise","noise",/enhancement category/i,"Enhancement category warning","Classification warning; doesn't block activation.",[])
 ];
-const STRUCTURAL = [/^=+$/, /^#+$/, /^Activation of worklist/i, /^Technical log/i, /^See log/i, /^End of activation/i,
-  /^Table generator started/i, /has been saved$/i, /^Message from the Data Dictionary/i, /^Table \w+ activated$/i,
-  /^I1 I2 I3 ED/i, /^Log Text$/i, /^U\d{10,}$/, /^Check table \w+/i];
 
-/* ---------- condition-table field knowledge ---------- */
+const STRUCTURAL = [/^[=#\-_*]{4,}$/, /^I1 I2 I3 ED/i, /^Log Text$/i, /^U\d{10,}$/, /^Log File\b/i, /^Transport request\s*:/i,
+  /^System\s*:/i, /^tp path/i, /^Version and release/i, /^(Start|End) of\b/i, /^End date and time/i, /^Ended with return code/i,
+  /^Table generator started/i, /has been saved$/i, /^Message from the Data Dictionary/i, /^(?:Table|TABL) \S+ activated$/i,
+  /^Check table \S+/i, /^Activation of worklist/i, /^Technical log/i, /^See log/i, /^End of activation/i,
+  /^The errors affect the following components/i, /^[A-Z]{2,}(?:-[A-Z0-9]+)+ \(.+\)$/, /^Post-import method/i,
+  /^Post-import methods/i, /belongs to package/i, /^There are no/i, /^No \w+ .*exist/i, /have been executed$/i, /were executed$/i,
+  /^Execute reports/i, /^Execution of programs/i, /^Generation of programs/i, /^Main import/i];
+const ERRORISH = /\b(errors?|not|failed|fail|cannot|can't|could not|terminated|cancell?ed|invalid|missing|does not exist|inconsistent|abort(?:ed)?|dump|exception|unknown|denied|full|incorrect|wrong|conflict|locked|refused|timed? ?out)\b|return code\s*[:=]?\s*(?:[89]|1\d)/i;
+
 const FIXED_KEYS = ["MANDT","KAPPL","KSCHL","KFRST","DATBI"];
-const FIXED_NONKEY = ["DATAB","KBSTAT","KNUMH"];
-function fieldOrigin(f){
-  if (FIXED_KEYS.includes(f)) return "Fixed key of every condition table";
-  if (FIXED_NONKEY.includes(f)) return "Fixed non-key field";
-  if (/^ZZ1_/.test(f)) return "Key-user custom field (Custom Fields app)";
-  if (/^(ZZ|YY)/.test(f)) return "Customer append to KOMG / KOMK / KOMP";
-  if (f === "COCO_NUM") return "Condition contract number (settlement management)";
-  return "SAP standard field catalog";
+function rcInfo(rc){
+  if (rc === null || rc === undefined) return {cls:"u", text:"No return code in this log"};
+  if (rc === 0) return {cls:"g", text:"Imported without problems"};
+  if (rc === 4) return {cls:"w", text:"Warnings: objects imported, check the warnings"};
+  if (rc === 8) return {cls:"e", text:"Errors: some objects weren't imported, activated or generated"};
+  if (rc === 12) return {cls:"e", text:"Fatal: the step was cancelled, usually a system, OS or database problem"};
+  if (rc === 13) return {cls:"e", text:"Cancelled by a signal: the process was stopped"};
+  if (rc === 16) return {cls:"e", text:"Internal error in tp or R3trans"};
+  if (rc >= 200) return {cls:"e", text:"tp itself failed (environment, parameters or files)"};
+  if (rc > 8) return {cls:"e", text:"Serious error: treat as fatal and check the tp logs"};
+  return {cls:"w", text:"Unusual return code; check the tp documentation"};
 }
 
-/* ---------- state ---------- */
-let S = {files:[], imports:[], acts:{}, selected:null};
+/* =====================================================================
+   State
+   ===================================================================== */
+const S = { logs:[], learned:[], session:[], cases:[], drafts:{}, aiBusy:{}, view:"triage",
+  db:null, sample:null, user:null, me:null, canWrite:null, names:{}, kbFilter:"", kbCat:"", pendingRender:false, showAllUnmatched:false, lastSaved:"" };
 
-/* ---------- parsing ---------- */
-function toLines(text){ return text.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+/g," ").trim()); }
+/* =====================================================================
+   Parsing
+   ===================================================================== */
+const toLines = t => t.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+/g," ").trim());
+function hash(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
 
-function classify(line){
-  for (const r of KB){ const m = line.match(r.re); if (m) return {rule:r, m}; }
-  return null;
+function signature(line){
+  return line
+    .replace(/\b[A-Z0-9]{3}K\d{6}\b/g,"<TR>")
+    .replace(/\b\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/g,"<DATE>")
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g,"<TIME>")
+    .replace(/"[^"]*"|'[^']*'/g,"<Q>")
+    .replace(/\b(Table|Program|Include|Class|Interface|Field|Object|View|Domain|Data element|Function module|Function group|Method|Report|Index|Structure|Search help|DDL source|Entity|Package|Switch|Enhancement implementation|Client|Request|user)\s+(?!<)([\w\/.$-]+)/gi,"$1 <OBJ>")
+    .replace(/(^|[\s(=:,])\/[A-Z0-9_]+\/[A-Z0-9_\/-]*/g,"$1<OBJ>")
+    .replace(/\b(?=[A-Z0-9_]*[0-9_])[A-Z][A-Z0-9_]{2,}\b/g,"<OBJ>")
+    .replace(/\b[ZY][A-Z0-9_]{2,}\b/g,"<OBJ>")
+    .replace(/\b\d+\b/g,"<N>");
+}
+function patternFromSignature(sig){
+  let first = true;
+  return sig.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")
+    .replace(/<OBJ>/g, ()=>{ if (first){ first=false; return "([\\w\\/.$-]+)"; } return "[\\w\\/.$-]+"; })
+    .replace(/<TR>/g,"[A-Z0-9]{3}K\\d{6}").replace(/<DATE>/g,"[\\d.\\/-]+").replace(/<TIME>/g,"[\\d:]+")
+    .replace(/<Q>/g,"(?:\"[^\"]*\"|'[^']*')").replace(/<N>/g,"\\d+").replace(/ /g,"\\s+");
+}
+function compileLearned(r){
+  try { return {...r, re:new RegExp(r.pattern,"i"), sev:r.severity||"error", cat:r.category||"Symptom", fix:r.fixSteps||[], tx:r.transactions||[], cause:r.rootCause||""}; }
+  catch { return null; }
+}
+function allRules(){
+  const learned = [...S.learned, ...S.session].map(compileLearned).filter(Boolean);
+  return [...learned, ...BUILTIN];           // team knowledge first
 }
 
-function parseImport(lines, name){
-  const txt = lines.join("\n");
-  const g = (re)=>{ const m = txt.match(re); return m ? m[1] : ""; };
-  const imp = {
-    name, trkorr:g(/Transport request\s*:\s*(\S+)/i), system:g(/System\s*:\s*(\S+)/i),
-    logfile:g(/Log File\s+(\S+)/i), step:g(/^(Execution of programs after import \(XPRA\)|Main import|DDIC import|Activation of [^\n]+|Import of [^\n]+)$/im),
-    method:"", object:"", start:"", end:"", rc:null, saved:[], ok:[], failed:[], components:[], errors:[]
-  };
-  let cur = null;
-  for (const l of lines){
-    let m;
-    if ((m = l.match(/Post-import method (\S+) started for (.+?), date and time: (\d{14})/i))){ imp.method=m[1]; imp.object=m[2]; imp.start=m[3]; continue; }
-    if ((m = l.match(/Post-import method \S+ completed for .*date and time: (\d{14})/i))){ imp.end=m[1]; continue; }
-    if ((m = l.match(/Table (\w+) has been saved/i))){ cur=m[1]; imp.saved.push(cur); continue; }
-    if ((m = l.match(/^Table (\w+) activated$/i))){ imp.ok.push(m[1]); continue; }
-    if (/Activation was interrupted/i.test(l)){ if (cur && !imp.failed.includes(cur)) imp.failed.push(cur); continue; }
-    if ((m = l.match(/(?:TABL|Table) (\w+) was not activated/i))){ if(!imp.failed.includes(m[1])) imp.failed.push(m[1]); continue; }
-    if ((m = l.match(/Ended with return code:\s*=*>?\s*(\d+)/i))){ imp.rc = +m[1]; continue; }
-    if ((m = l.match(/^([A-Z]{2,}-[A-Z-]+) \(.+\)$/))){ imp.components.push(l); continue; }
-    const c = classify(l);
-    if (c && (c.rule.sev==="error") && c.rule.id!=="INTERRUPT" && c.rule.id!=="NOTACT") imp.errors.push({line:l, rule:c.rule});
+function detectMeta(text, name){
+  const m = text.match(/Log File\s+\S*?([A-Z0-9]{3})([A-Z])(\d{6})\.([A-Z0-9]{3})\b/) || name.match(/([A-Z0-9]{3})([A-Z])(\d{6})\.([A-Z0-9]{3})/);
+  const meta = {letter:"?", tr:"", target:""};
+  if (m){ meta.letter = STEPS[m[2]] ? m[2] : "?"; meta.tr = m[1]+"K"+m[3]; meta.target = m[4]; }
+  const tr = text.match(/Transport request\s*:\s*([A-Z0-9]{3}K\d{6})/i); if (tr) meta.tr = tr[1];
+  const sys = text.match(/^\s*System\s*:\s*([A-Z0-9]{3})\b/im); if (sys) meta.target = sys[1];
+  if (meta.letter === "?"){
+    if (/Post-import method|\(XPRA\)/i.test(text)) meta.letter = "R";
+    else if (/Generation of programs|Syntax error|generated/i.test(text)) meta.letter = "G";
+    else if (/Activation of worklist|mass activation|Check table/i.test(text)) meta.letter = "SE11";
+    else if (/Main import/i.test(text)) meta.letter = "I";
+    else if (/DDIC import|Import of dictionary/i.test(text)) meta.letter = "H";
   }
-  if (!imp.step) imp.step = /XPRA/i.test(txt) ? "Execution of programs after import (XPRA)" : "Import";
-  return imp;
+  if (!meta.tr){ const t = text.match(/\b([A-Z0-9]{3}K\d{6})\b/); if (t) meta.tr = t[1]; }
+  return meta;
 }
 
-function parseActivation(lines){
-  const out = {};
-  let cur = null;
-  for (const l of lines){
-    if (!l) continue;
-    let m;
-    if ((m = l.match(/^(?:TABL (\w+) was not activated|Check table (\w+))/i))){
-      const t = m[1]||m[2];
-      if (!out[t]) out[t] = {table:t, lines:[], fields:[], hits:[], unmatched:[]};
-      cur = out[t];
-    }
-    if (/^End of activation/i.test(l)) { cur = null; continue; }
-    if (!cur) continue;
-    cur.lines.push(l);
+function analyzeLog(log, rules){
+  const lines = log.lines;
+  let rc = null; const findings = []; const unknown = {}; const blocks = {}; let curBlock = null;
+  lines.forEach((l, i)=>{
+    if (!l) return;
+    let m = l.match(/(?:Ended with return code|return code|exit code)\s*:?\s*=*>?\s*(\d+)/i);
+    if (m && /Ended with|exit code/i.test(l)) rc = Math.max(rc ?? 0, +m[1]);
+    const bm = l.match(/^(?:TABL (\S+) was not activated|Check table (\S+))/i);
+    if (bm){ const t = bm[1]||bm[2]; curBlock = blocks[t] ||= {fields:[]}; }
     const fm = l.match(/^Field name (\w+)/i);
-    if (fm && !cur.fields.includes(fm[1])) cur.fields.push(fm[1]);
-    const c = classify(l);
-    if (c) cur.hits.push({line:l, rule:c.rule});
-    else if (!STRUCTURAL.some(re=>re.test(l))) cur.unmatched.push(l);
-  }
-  for (const t in out) analyseTable(out[t]);
-  return out;
+    if (fm && curBlock && !curBlock.fields.includes(fm[1])) curBlock.fields.push(fm[1]);
+    if (/^Ended with return code/i.test(l)) return;
+    for (const r of rules){
+      const mm = l.match(r.re);
+      if (mm){ findings.push({rule:r, line:l, idx:i, obj:(mm[1]||"").replace(/[,:;.]$/,"")}); return; }
+    }
+    if (STRUCTURAL.some(re=>re.test(l))) return;
+    const sig = signature(l);
+    const key = hash(sig);
+    const errorish = ERRORISH.test(l);
+    if (!unknown[key]) unknown[key] = {key, sig, line:l, idx:i, count:0, errorish, context: lines.slice(Math.max(0,i-4), i+5).filter(Boolean)};
+    unknown[key].count++;
+  });
+  return {rc, findings, unknown:Object.values(unknown), blocks};
 }
 
-function analyseTable(a){
-  const f = a.fields;
-  a.isCond = /^A[0-9A-Z]{3}$/.test(a.table) || f.includes("KNUMH");
-  const iDatab = f.indexOf("DATAB");
-  a.keys = iDatab > 0 ? f.slice(0, iDatab) : null;
-  a.varKeys = a.keys ? a.keys.filter(x=>!FIXED_KEYS.includes(x)) : null;
-  a.fixedCount = a.keys ? a.keys.filter(x=>FIXED_KEYS.includes(x)).length : 5;
-  const roots = a.hits.filter(h=>h.rule.root);
-  a.root = roots[0] || a.hits.find(h=>h.rule.sev==="error" && !["NOTACT","CHECKERR","INTERRUPT","POSTERR"].includes(h.rule.id)) || null;
-  a.verdict = a.root ? "error" : (a.hits.some(h=>h.rule.sev==="error") ? "warn" : "ok");
-}
-
-function detect(text){
-  if (/Activation of worklist|Check table \w+|was not activated/i.test(text) && !/Post-import method/i.test(text)) return "activation";
-  if (/Transport request|Post-import method|Ended with return code|Log File/i.test(text)) return "import";
-  return "activation";
-}
-
-function ingest(text, name){
-  const lines = toLines(text);
-  const kind = detect(text);
-  if (kind === "import"){
-    const imp = parseImport(lines, name);
-    S.imports = S.imports.filter(i=>i.trkorr!==imp.trkorr || !imp.trkorr);
-    S.imports.push(imp);
-    // An import log may also carry activation detail
-    Object.assign(S.acts, parseActivation(lines));
-  } else {
-    const acts = parseActivation(lines);
-    Object.assign(S.acts, acts);
-    if (!S.selected) S.selected = Object.keys(acts)[0] || null;
-  }
-  S.files.push({name, kind});
-  if (!S.selected){ const k = Object.keys(S.acts); if (k.length) S.selected = k[0]; }
+function analyzeAll(){
+  const rules = allRules();
+  return S.logs.map(log=>({...log, ...analyzeLog(log, rules)}));
 }
 
 async function readFile(file){
   const ext = file.name.split(".").pop().toLowerCase();
   if ((ext==="xlsx"||ext==="xls") && window.XLSX){
     const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
-    const lines = [];
-    wb.SheetNames.forEach(n=>{
-      XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, blankrows:true, defval:""})
-        .forEach(r=>lines.push(r.map(c=>String(c).trim()).filter(Boolean).join(" ")));
-    });
-    return lines.join("\n");
+    const out = [];
+    wb.SheetNames.forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, blankrows:true, defval:""})
+      .forEach(r=>out.push(r.map(c=>String(c).trim()).filter(Boolean).join(" "))));
+    return out.join("\n");
   }
   return await file.text();
 }
+function addLog(text, name){
+  const meta = detectMeta(text, name);
+  S.logs.push({id: hash(name + text.length + S.logs.length), name, ...meta, lines: toLines(text)});
+}
 
-/* ---------- helpers ---------- */
-const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const ts = s => s && s.length===14 ? `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)} ${s.slice(8,10)}:${s.slice(10,12)}:${s.slice(12)}` : "–";
-function dur(a,b){ if(!a||!b) return "–"; const d=(x)=>new Date(+x.slice(0,4),+x.slice(4,6)-1,+x.slice(6,8),+x.slice(8,10),+x.slice(10,12),+x.slice(12)); const s=(d(b)-d(a))/1000; return `${Math.floor(s/60)} min ${Math.round(s%60)} s`; }
-const rcText = rc => rc===null ? "–" : ({0:"OK",4:"Warnings",8:"Errors",12:"Fatal",16:"Internal error"}[rc] || "");
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate = iso => { try { return new Date(iso).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); } catch { return iso; } };
+const ruleKey = r => r.source === "builtin" ? "b:"+r.id : "t:"+r.id;
+function seenStats(){
+  const m = {};
+  S.cases.forEach(c=>(c.ruleKeys||[]).forEach(k=>{ const s = m[k] ||= {n:0, last:null, tr:""}; s.n++; if (!s.last || c.at > s.last){ s.last=c.at; s.tr=c.tr; } }));
+  return m;
+}
+function nameOf(id){ return (id && S.names[id]) || ""; }
+async function resolveNames(ids){
+  if (!S.user || !ids.length) return;
+  const missing = [...new Set(ids.filter(id=>id && !(id in S.names)))];
+  if (!missing.length) return;
+  const ps = await S.user.profiles(missing);
+  let changed = false;
+  missing.forEach(id=>{ S.names[id] = ps[id]?.name || ""; changed = true; });
+  if (changed) safeRender();
+}
+function safeRender(){
+  const a = document.activeElement;
+  if (a && a.closest && a.closest(".draft, .kbedit")){ S.pendingRender = true; return; }
+  render();
+}
+document.addEventListener("focusout", ()=>{ setTimeout(()=>{ if (S.pendingRender){ const a=document.activeElement; if (!(a && a.closest && a.closest(".draft, .kbedit"))){ S.pendingRender=false; render(); } } }, 0); });
 
-/* ---------- render ---------- */
+/* =====================================================================
+   Render: Triage
+   ===================================================================== */
 function render(){
-  const loaded = document.getElementById("loaded");
-  loaded.innerHTML = S.files.length ? S.files.map(f=>`<span class="tag">${esc(f.kind)} · ${esc(f.name)}</span>`).join("") : `<span class="hint">No logs loaded yet.</span>`;
-  renderImport(); renderDiag(); renderTicket(); renderAI();
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.view===S.view)));
+  document.getElementById("tab-kb").textContent = `Knowledge base (${BUILTIN.length + S.learned.length + S.session.length})`;
+  document.getElementById("tab-history").textContent = `Case history (${S.cases.length})`;
+  document.getElementById("viewTriage").hidden = S.view!=="triage";
+  document.getElementById("viewKb").hidden = S.view!=="kb";
+  document.getElementById("viewHistory").hidden = S.view!=="history";
+  const A = analyzeAll();
+  renderLoaded(); renderPipe(A); renderUnderstand(A); renderKnown(A); renderUnknown(A); renderRemember(A);
+  if (S.view==="kb") renderKb();
+  if (S.view==="history") renderHistory();
 }
 
-function renderImport(){
-  const el = document.getElementById("secImport");
-  if (!S.imports.length){
-    el.innerHTML = `<h2 id="h-import">Import result</h2><div class="empty">Load an import log (for example <code>/usr/sap/trans/log/DS4R904917.QS4</code>) to see which objects failed.</div>`;
-    return;
-  }
-  el.innerHTML = S.imports.map(imp=>{
-    const total = imp.saved.length || (imp.ok.length + imp.failed.length);
-    const okPct = total ? imp.ok.length/total*100 : 0, badPct = total ? imp.failed.length/total*100 : 0;
-    const chips = imp.failed.map(t=>{
-      const has = !!S.acts[t];
-      return `<button type="button" class="chip ${has?"diag":""} ${S.selected===t?"sel":""}" data-t="${esc(t)}" title="${has?"Activation log loaded – show diagnosis":"No activation log loaded for this table"}">${esc(t)}</button>`;
-    }).join("");
-    const diagCount = imp.failed.filter(t=>S.acts[t]).length;
-    return `
-      <div class="row" style="justify-content:space-between">
-        <h2 id="h-import">Import result · ${esc(imp.trkorr||imp.name)}</h2>
-        <span class="rc s${imp.rc??0}">RC ${imp.rc ?? "?"} · ${rcText(imp.rc)}</span>
-      </div>
-      <div class="facts">
-        <div class="fact"><span>Request</span><b>${esc(imp.trkorr||"–")}</b></div>
-        <div class="fact"><span>Target system</span><b>${esc(imp.system||"–")}</b></div>
-        <div class="fact"><span>Step</span><b>${esc(imp.step)}</b></div>
-        <div class="fact"><span>Post-import method</span><b>${esc(imp.method||"–")}${imp.object?` <span class="hint">(${esc(imp.object)})</span>`:""}</b></div>
-        <div class="fact"><span>Runtime</span><b>${dur(imp.start, imp.end)}</b></div>
-      </div>
-      ${total ? `
-      <div style="display:grid;gap:8px">
-        <div class="bar" role="img" aria-label="${imp.ok.length} activated, ${imp.failed.length} failed of ${total}">
-          <i style="width:${okPct}%;background:var(--ok)"></i><i style="width:${badPct}%;background:var(--err)"></i>
-        </div>
-        <div class="legend"><span><em style="background:var(--ok)"></em>${imp.ok.length} activated</span><span><em style="background:var(--err)"></em>${imp.failed.length} activation interrupted</span><span>${total} objects processed</span></div>
-      </div>`:""}
-      ${imp.failed.length ? `
-      <div style="display:grid;gap:8px">
-        <h3>Failed objects</h3>
-        <div class="chips">${chips}</div>
-        <p class="hint">${diagCount} of ${imp.failed.length} diagnosed. For the rest, export the activation log from the target system (SE11 → table → Utilities → Activation Log) and drop it above. Highlighted objects have a diagnosis.</p>
-      </div>`:""}
-      ${imp.components.length?`<p class="hint">Component: ${imp.components.map(esc).join(", ")}</p>`:""}
-    `;
-  }).join(`<hr style="border:0;border-top:1px solid var(--line);width:100%">`);
-  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ if (S.acts[b.dataset.t]){ S.selected=b.dataset.t; render(); document.getElementById("secDiag").scrollIntoView({behavior:"smooth",block:"start"}); }});
+function renderLoaded(){
+  document.getElementById("loaded").innerHTML = S.logs.length
+    ? S.logs.map(l=>`<span class="tag">${esc(l.letter)} · ${esc(l.name)}</span>`).join("")
+    : `<span class="hint">No logs loaded yet.</span>`;
 }
 
-function stepsFor(a, imp){
-  const others = imp ? imp.failed.filter(t=>t!==a.table) : [];
-  const id = a.root?.rule.id;
-  const tail = [
-    `Re-import <code>${esc(imp?.trkorr||"the request")}</code> into ${esc(imp?.system||"the target")} after the fix is in place, then run <code>RV80HGEN</code> there to regenerate the pricing programs.`,
-    `Block the request from going to production until the target finishes with RC 0 or 4.`
+function unknownGroups(A){
+  const all = [];
+  A.forEach(log=>log.unknown.forEach(u=>all.push({...u, log})));
+  const seen = new Set();
+  return all.filter(u=>{ if (seen.has(u.key)) return false; seen.add(u.key); return true; });
+}
+
+function renderPipe(A){
+  const any = A.length>0;
+  const real = A.flatMap(l=>l.findings).filter(f=>f.rule.sev==="error"||f.rule.sev==="warning");
+  const unk = unknownGroups(A).filter(u=>u.errorish);
+  const drafts = Object.keys(S.drafts).length;
+  const saved = S.lastSaved && S.lastSaved === caseId(A);
+  const st = [
+    {t:"Read", d: any ? `${A.length} log${A.length>1?"s":""}, ${A.reduce((n,l)=>n+l.lines.filter(Boolean).length,0)} lines` : "Drop a log", c: any?"done":""},
+    {t:"Understand", d: any ? A.map(l=>`${l.letter}: RC ${l.rc ?? "?"}`).join(" · ") : "Step and return code", c: any?"done":""},
+    {t:"Match", d: any ? `${real.length} known error${real.length===1?"":"s"}` : "Known errors and fixes", c: any?"done":""},
+    {t:"Decide", d: !any ? "Unknown errors: you choose" : unk.length ? `${unk.length} unknown: your choice` : "Nothing unknown", c: !any?"": drafts? "ai" : unk.length?"attn":"done"},
+    {t:"Remember", d: saved ? "Case saved" : "Save case and new rules", c: saved?"done":""}
   ];
-  if (id === "KEY16" && a.isCond){
-    const v = a.varKeys?.length ?? "?";
-    const maxVar = 16 - (a.fixedCount||5);
-    return [
-      `Fix this in the <b>development system</b>. A table can't be activated in the target if it breaks a dictionary limit, so re-importing won't help.`,
-      `Check <code>${esc(a.table)}</code> in SE11 in the development system. If it's inactive there too, it was never usable and the transport carried a definition that couldn't be activated.`,
-      `Redesign the table with no more than <b>${maxVar}</b> variable key fields (it has <b>${v}</b>). The fields of a generated condition table can't be changed, so create a new table. Options: split the criteria across two access steps, or combine related criteria into one derived field filled during pricing preparation.`,
-      `Change the access sequences that use <code>${esc(a.table)}</code> (V/07) to use the new table(s). Then delete <code>${esc(a.table)}</code> in the development system (V/04, only once no access sequence or condition records use it). Transport this after <code>${esc(imp?.trkorr||"the original request")}</code>.`,
-      ...(others.length ? [`Get activation logs for the other ${others.length} failed tables (${others.slice(0,6).map(esc).join(", ")}${others.length>6?", …":""}) and drop them here. Tables designed in the same release often break the same limit.`] : []),
-      ...tail
-    ];
-  }
-  if (id === "DEPFLD" || id === "DEPDTEL" || id === "NOTEXIST"){
-    return [
-      `Find the request that carries the missing object in the development system (SE03 → Search for Objects in Requests).`,
-      `Import that request into the target first. For ZZ1_ fields, the request comes from the key-user extensibility transport (Export Software Collection), not SE09.`,
-      ...tail
-    ];
-  }
-  if (id === "CONVERT"){
-    return [`Check the table in SE14 in the target system, and the conversion log.`, `Clear any partial or manual table that already exists in the target. Don't create objects by hand in QAS.`, ...tail];
-  }
-  if (id === "DUPKEY"){
-    return [`Compare the table entries in the request with the target (SCU0 or SCMP).`, `Decide with the change owner which version wins, then re-import with the right overwrite options.`, ...tail];
-  }
-  if (!a.root){
-    return [`No known root cause in this log. Send it to Claude below, or open the full technical log (SLG1 or the log ID shown) in the target system.`];
-  }
-  return [`Fix the cause shown above in the development system and transport the correction.`, ...tail];
+  document.getElementById("pipe").innerHTML = st.map((s,i)=>`<div class="pstep ${s.c}"><span class="n">${i+1} / 5</span><b>${s.t}</b><span>${esc(s.d)}</span></div>`).join("");
 }
 
-function renderDiag(){
-  const el = document.getElementById("secDiag");
-  const a = S.acts[S.selected];
-  const tables = Object.keys(S.acts);
-  if (!a){
-    el.innerHTML = `<h2 id="h-diag">Diagnosis</h2><div class="empty">Load an SE11 activation log for one of the failed objects to get its root cause.</div>`;
+function renderUnderstand(A){
+  const el = document.getElementById("secUnderstand");
+  if (!A.length){ el.innerHTML = `<div class="ph"><h2 id="h-und"><span class="stage">2</span>Understand the step and return code</h2></div><div class="empty">Load a log to see which import step it belongs to and what its return code means.</div>`; return; }
+  el.innerHTML = `<div class="ph"><h2 id="h-und"><span class="stage">2</span>Understand the step and return code</h2></div>` +
+    A.map(log=>{
+      const ri = rcInfo(log.rc);
+      return `<div class="logcard">
+        <div class="row between"><b class="mono">${esc(log.name)}</b><span class="rc ${ri.cls}">RC ${log.rc ?? "?"}</span></div>
+        <div class="facts">
+          <div class="fact"><span>Request</span><b>${esc(log.tr||"–")}</b></div>
+          <div class="fact"><span>Target</span><b>${esc(log.target||"–")}</b></div>
+          <div class="fact"><span>Step</span><b>${esc(log.letter)} · ${esc(STEPS[log.letter]||"")}</b></div>
+          <div class="fact"><span>Meaning</span><b style="font-family:var(--f-body);font-size:.86rem">${esc(ri.text)}</b></div>
+        </div>
+        ${log.rc>=8 && !log.findings.some(f=>f.rule.sev==="error") ? `<p class="hint"><b>Where to look next:</b> ${esc(NEXT_LOOK[log.letter]||NEXT_LOOK["?"])}</p>`:""}
+      </div>`;
+    }).join("");
+}
+
+function groupFindings(A){
+  const g = {};
+  A.forEach(log=>log.findings.forEach(f=>{
+    const k = ruleKey(f.rule);
+    const e = g[k] ||= {rule:f.rule, objs:new Set(), lines:[], logs:new Set(), blocks:[]};
+    if (f.obj) e.objs.add(f.obj);
+    if (e.lines.length<3) e.lines.push(f.line);
+    e.logs.add(log.letter);
+    if (f.rule.id==="KEY16" && f.obj && log.blocks[f.obj]) e.blocks.push({t:f.obj, fields:log.blocks[f.obj].fields});
+  }));
+  return Object.values(g);
+}
+
+function keyMeter(b){
+  const iDatab = b.fields.indexOf("DATAB");
+  if (iDatab < 1) return "";
+  const keys = b.fields.slice(0, iDatab), vars = keys.filter(k=>!FIXED_KEYS.includes(k));
+  return `<div style="display:grid;gap:6px"><span class="eyebrow">${esc(b.t)}: ${keys.length} key fields of 16 allowed · ${vars.length} variable</span>
+    <div class="cells" role="img" aria-label="${keys.length} key fields">${keys.map((k,i)=>`<span class="cell ${FIXED_KEYS.includes(k)?"fixed":""} ${i>=16?"over":""}" title="${esc(k)}">${i+1}</span>`).join("")}</div>
+    <span class="hint mono">${vars.map(esc).join(", ")}</span></div>`;
+}
+
+function findingCard(e, seen){
+  const r = e.rule, k = ruleKey(r), s = seen[k];
+  const team = r.source !== "builtin";
+  return `<div class="find ${r.sev}"><span class="stripe"></span><div class="body">
+    <div class="row between"><h3>${esc(r.title)}${e.objs.size?`: <span class="mono">${[...e.objs].slice(0,8).map(esc).join(", ")}${e.objs.size>8?` +${e.objs.size-8}`:""}</span>`:""}</h3>
+      <div class="badges">
+        <span class="pill ${r.sev}">${esc(r.sev)}</span>
+        <span class="pill">${esc(r.cat)}</span>
+        <span class="pill ${team?"team":""}">${team ? (r.source==="ai"?"Team-learned (AI-assisted)":"Team-learned") : "Built-in"}</span>
+        ${s ? `<span class="pill seen">Seen in ${s.n} earlier case${s.n>1?"s":""} · last ${esc(fmtDate(s.last))}${s.tr?` (${esc(s.tr)})`:""}</span>` : `<span class="pill">First time seen</span>`}
+      </div></div>
+    <p>${esc(r.cause)}</p>
+    ${e.blocks.map(keyMeter).join("")}
+    ${r.fix && r.fix.length ? `<ol class="steps">${r.fix.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:""}
+    ${r.tx && r.tx.length ? `<div class="badges">${r.tx.map(t=>`<span class="pill">${esc(t)}</span>`).join("")}</div>`:""}
+    ${r.verify ? `<p class="hint"><b>To confirm:</b> ${esc(r.verify)}</p>`:""}
+    ${team && r.createdBy ? `<p class="hint">Approved by ${esc(nameOf(r.createdBy) || "a team member")}${r.createdAt?` on ${esc(fmtDate(r.createdAt))}`:""}.</p>`:""}
+    <details><summary>Evidence (${e.lines.length} line${e.lines.length>1?"s":""} shown)</summary><div style="display:grid;gap:6px;margin-top:8px">${e.lines.map(l=>`<div class="line">${esc(l)}</div>`).join("")}</div></details>
+  </div></div>`;
+}
+
+function renderKnown(A){
+  const el = document.getElementById("secKnown");
+  const head = `<div class="ph"><h2 id="h-known"><span class="stage">3</span>Match against known errors</h2><span class="hint">Team-learned rules are checked before built-in ones.</span></div>`;
+  if (!A.length){ el.innerHTML = head + `<div class="empty">Known errors and their fixes appear here.</div>`; return; }
+  const groups = groupFindings(A), seen = seenStats();
+  const causes = groups.filter(g=>g.rule.sev==="error"||g.rule.sev==="warning");
+  const infos = groups.filter(g=>g.rule.sev==="info"), sym = groups.filter(g=>g.rule.sev==="symptom"), noise = groups.filter(g=>g.rule.sev==="noise");
+  resolveNames(groups.map(g=>g.rule.createdBy).filter(Boolean));
+  el.innerHTML = head +
+    (causes.length ? causes.map(g=>findingCard(g, seen)).join("") : `<div class="notice warn">No known root cause in these logs. Check the unknown errors below, or load the next step's log.</div>`) +
+    (infos.length ? infos.map(g=>findingCard(g, seen)).join("") : "") +
+    (sym.length ? `<details><summary>${sym.length} symptom line type${sym.length>1?"s":""} (they point to the causes above)</summary><div style="display:grid;gap:10px;margin-top:10px">${sym.map(g=>findingCard(g, seen)).join("")}</div></details>`:"") +
+    (noise.length ? `<details><summary>${noise.reduce((n,g)=>n+g.lines.length,0)}+ noise lines filtered out</summary><div style="display:grid;gap:6px;margin-top:10px">${noise.map(g=>`<div class="hint"><b>${esc(g.rule.title)}</b> (${g.objs.size} objects): ${esc(g.rule.cause)}</div>`).join("")}</div></details>`:"");
+}
+
+/* ---------- Stage 4: unknown errors, user decides ---------- */
+function renderUnknown(A){
+  const el = document.getElementById("secUnknown");
+  const head = `<div class="ph"><h2 id="h-unk"><span class="stage">4</span>Unknown errors: your call</h2><span class="hint">AI only runs when you choose it. Nothing is remembered until you approve it.</span></div>`;
+  if (!A.length){ el.innerHTML = head + `<div class="empty">Error lines the knowledge base doesn't recognise appear here, with the choice to ask AI, mark as noise, or write the rule yourself.</div>`; return; }
+  const groups = unknownGroups(A);
+  const errorish = groups.filter(u=>u.errorish), other = groups.filter(u=>!u.errorish);
+  const list = S.showAllUnmatched ? [...errorish, ...other] : errorish;
+  const aiNote = S.sample ? "" : `<div class="notice">AI help isn't available in this view. You can still copy the prompt into Claude or Joule, or write the rule yourself.</div>`;
+  const dbNote = S.db ? "" : `<div class="notice warn">Shared memory isn't available in this view. Approved rules will only last until you close the page.</div>`;
+  const writeNote = S.canWrite === false ? `<div class="notice warn">You can view the knowledge base but not change it. Ask the owner for Contributor access to approve rules.</div>` : "";
+  const draftsOnly = Object.values(S.drafts).filter(d=>!groups.some(g=>g.key===d.key));
+  el.innerHTML = head + aiNote + dbNote + writeNote +
+    (errorish.length ? `<div class="row"><span>${errorish.length} unknown error line type${errorish.length>1?"s":""}.</span>${S.sample && errorish.length>1 ? `<button type="button" class="ai" id="btnAskAll" ${S.aiBusy.all?"disabled":""}>${S.aiBusy.all?"Asking AI…":`Ask AI about all ${Math.min(errorish.length,8)}`}</button>`:""}</div>`
+      : `<div class="notice">Every error line matched a known rule.</div>`) +
+    list.map(u=>unknownCard(u)).join("") +
+    draftsOnly.map(d=>draftCard(d)).join("") +
+    (other.length ? `<div class="row"><button type="button" class="link" id="btnToggleAll">${S.showAllUnmatched?"Hide":"Show"} ${other.length} other unrecognised line type${other.length>1?"s":""} (no error words)</button></div>`:"");
+  wireUnknown(groups);
+}
+
+function unknownCard(u){
+  const d = S.drafts[u.key];
+  const busy = S.aiBusy[u.key];
+  return `<div class="unk" id="u-${u.key}">
+    <div class="row between"><span class="eyebrow">${esc(u.log.letter)} · ${esc(STEPS[u.log.letter]||"")} · seen ${u.count}× in ${esc(u.log.name)}</span></div>
+    <div class="line">${esc(u.line)}</div>
+    <details><summary>Context</summary><div class="line" style="white-space:pre-wrap;margin-top:8px">${u.context.map(esc).join("\n")}</div></details>
+    ${d ? draftCard(d) : `<div class="row">
+      ${S.sample ? `<button type="button" class="ai" data-act="ask" data-k="${u.key}" ${busy?"disabled":""}>${busy?"Asking AI…":"Ask AI to diagnose"}</button>` : `<button type="button" data-act="copyprompt" data-k="${u.key}">Copy AI prompt</button>`}
+      <button type="button" data-act="noise" data-k="${u.key}">Mark as noise</button>
+      <button type="button" data-act="manual" data-k="${u.key}">Write the rule myself</button>
+      <span class="toast" id="t-${u.key}" hidden>Prompt copied</span>
+    </div>`}
+  </div>`;
+}
+
+function draftCard(d){
+  const k = d.key;
+  let test = "";
+  try { const re = new RegExp(d.pattern, "i"); test = re.test(d.line) ? `<span class="ok">Matches this line</span>` : `<span class="bad">Doesn't match this line</span>`; }
+  catch { test = `<span class="bad">Not a valid pattern</span>`; }
+  const origin = d.source==="ai" ? `AI draft${d.confidence?` · confidence ${esc(d.confidence)}`:""}` : d.source==="noise" ? "Noise rule" : "Your rule";
+  return `<div class="draft" data-k="${k}">
+    <div class="row between"><b>${origin}</b><span class="hint">Review and edit before approving.</span></div>
+    ${d.error ? `<div class="notice warn">${esc(d.error)}</div>`:""}
+    <div class="formgrid">
+      <label class="f wide">Title<input type="text" id="d-title-${k}" data-f="title" value="${esc(d.title)}"></label>
+      <label class="f">Category<select id="d-cat-${k}" data-f="category">${CATS.map(c=>`<option ${c===d.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+      <label class="f">Severity<select id="d-sev-${k}" data-f="severity">${["error","warning","info","symptom","noise"].map(s=>`<option ${s===d.severity?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label class="f">Transactions (comma-separated)<input type="text" id="d-tx-${k}" data-f="transactions" value="${esc((d.transactions||[]).join(", "))}"></label>
+      <label class="f wide">Root cause<textarea id="d-cause-${k}" data-f="rootCause" style="font-family:var(--f-body);min-height:70px">${esc(d.rootCause)}</textarea></label>
+      <label class="f wide">Fix steps (one per line)<textarea id="d-fix-${k}" data-f="fixSteps" style="font-family:var(--f-body)">${esc((d.fixSteps||[]).join("\n"))}</textarea></label>
+      <label class="f wide">How to confirm<input type="text" id="d-ver-${k}" data-f="verify" value="${esc(d.verify||"")}"></label>
+      <label class="f wide">Match pattern (regular expression; first group = object name) · ${test}<input type="text" id="d-pat-${k}" data-f="pattern" class="mono" value="${esc(d.pattern)}"></label>
+    </div>
+    <div class="row">
+      ${S.canWrite===false ? "" : `<button type="button" class="primary" data-act="approve" data-k="${k}">Approve and remember</button>`}
+      <button type="button" data-act="once" data-k="${k}">Use for this session only</button>
+      <button type="button" data-act="discard" data-k="${k}">Discard</button>
+    </div>
+  </div>`;
+}
+
+function wireUnknown(groups){
+  const el = document.getElementById("secUnknown");
+  const byKey = Object.fromEntries(groups.map(g=>[g.key,g]));
+  el.querySelectorAll("[data-act]").forEach(b=>b.onclick = ()=>onUnknownAction(b.dataset.act, b.dataset.k, byKey[b.dataset.k], b));
+  el.querySelectorAll(".draft [data-f]").forEach(inp=>{
+    inp.oninput = ()=>{
+      const k = inp.closest(".draft").dataset.k, d = S.drafts[k]; if (!d) return;
+      const f = inp.dataset.f;
+      d[f] = (f==="fixSteps") ? inp.value.split("\n").map(s=>s.trim()).filter(Boolean)
+           : (f==="transactions") ? inp.value.split(",").map(s=>s.trim()).filter(Boolean) : inp.value;
+      if (f==="pattern"){ const lab = inp.closest("label"); try { const ok = new RegExp(inp.value,"i").test(d.line); lab.firstChild.textContent = "Match pattern (regular expression; first group = object name) · "; lab.querySelector("span")?.remove(); lab.insertBefore(Object.assign(document.createElement("span"),{className:ok?"ok":"bad",textContent:ok?"Matches this line":"Doesn't match this line"}), inp); } catch { } }
+    };
+  });
+  const all = document.getElementById("btnAskAll"); if (all) all.onclick = ()=>askAll(groups.filter(g=>g.errorish && !S.drafts[g.key]).slice(0,8));
+  const tog = document.getElementById("btnToggleAll"); if (tog) tog.onclick = ()=>{ S.showAllUnmatched = !S.showAllUnmatched; render(); };
+}
+
+function baseDraft(u, source){
+  return {key:u.key, line:u.line, sig:u.sig, step:u.log.letter, source, title:"", category:"Symptom", severity:"error",
+    rootCause:"", fixSteps:[], transactions:[], verify:"", confidence:"", pattern:patternFromSignature(u.sig)};
+}
+
+function aiPrompt(items, A){
+  const known = groupFindings(A || analyzeAll()).filter(g=>g.rule.sev==="error"||g.rule.sev==="warning").map(g=>`- ${g.rule.title}${g.objs.size?` (${[...g.objs].slice(0,5).join(", ")})`:""}`).join("\n") || "(none)";
+  const one = items.length === 1;
+  const shape = `{"key": string (copy from input), "title": short name of this error type, max 8 words, "category": one of ${JSON.stringify(CATS)}, "severity": "error"|"warning"|"info"|"symptom"|"noise", "rootCause": 1-3 sentences, "fixSteps": [ordered steps, one sentence each, naming transactions or reports], "transactions": ["SE11", ...], "verify": "what to check in the system to confirm", "confidence": "high"|"medium"|"low", "pattern": "JavaScript regular expression, case-insensitive, that matches this message type in general (object names, numbers and dates replaced by patterns) with exactly ONE capture group for the affected object"}`;
+  return `You are a senior SAP Basis consultant for SAP S/4HANA on the ABAP platform. Our rule library doesn't recognise the transport log message${one?"":"s"} below. Diagnose ${one?"it":"each one"}.
+Rules: be specific to SAP CTS/tp/R3trans behaviour. If unsure, say so in rootCause and set confidence to "low". Don't invent SAP Note numbers. "symptom" means a summary line that points to another cause; "noise" means safe to ignore.
+
+Known findings already identified in the same logs:
+${known}
+
+${items.map(u=>`--- key: ${u.key}
+Request ${u.log.tr||"?"}, target ${u.log.target||"?"}, step ${u.log.letter} (${STEPS[u.log.letter]||"unknown"}), step return code ${u.log.rc ?? "?"}
+Message: ${u.line}
+Surrounding lines:
+${u.context.join("\n")}`).join("\n\n")}
+
+Reply with only ${one?"one JSON object":"a JSON array of objects, one per key"} of this shape:
+${shape}`;
+}
+
+function applyAi(u, res){
+  const d = baseDraft(u, "ai");
+  Object.assign(d, {
+    title: String(res.title||"").slice(0,120), category: CATS.includes(res.category) ? res.category : "Symptom",
+    severity: ["error","warning","info","symptom","noise"].includes(res.severity) ? res.severity : "error",
+    rootCause: String(res.rootCause||""), fixSteps: Array.isArray(res.fixSteps) ? res.fixSteps.map(String).slice(0,10) : [],
+    transactions: Array.isArray(res.transactions) ? res.transactions.map(String).slice(0,8) : [],
+    verify: String(res.verify||""), confidence: String(res.confidence||"")
+  });
+  if (typeof res.pattern === "string"){ try { if (new RegExp(res.pattern,"i").test(u.line)) d.pattern = res.pattern; } catch {} }
+  S.drafts[u.key] = d;
+}
+const SAMPLE_ERR = {not_granted:"AI use wasn't allowed for this page. You can allow it from the page's permissions.", rate_limited:"Too many AI requests right now. Try again in a minute.", session_expired:"Sign in again to use AI.", refused:"AI declined this input.", invalid_json:"AI answered in an unexpected format. Try again.", prompt_too_large:"The log context is too large; try one line at a time."};
+function aiFail(e){ return SAMPLE_ERR[e?.code] || "The AI request didn't complete. Try again."; }
+
+async function askOne(u){
+  S.aiBusy[u.key] = true; render();
+  try { const res = await S.sample.json(aiPrompt([u])); applyAi(u, Array.isArray(res)?res[0]||{}:res||{}); }
+  catch(e){ const d = baseDraft(u,"ai"); d.error = aiFail(e); S.drafts[u.key] = d; if (["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e?.code)) S.sample = null; }
+  finally { delete S.aiBusy[u.key]; render(); }
+}
+async function askAll(items){
+  if (!items.length) return;
+  S.aiBusy.all = true; items.forEach(u=>S.aiBusy[u.key]=true); render();
+  try {
+    const res = await S.sample.json(aiPrompt(items));
+    const arr = Array.isArray(res) ? res : [res];
+    items.forEach(u=>{ const r = arr.find(x=>x && x.key===u.key); if (r) applyAi(u, r); });
+  } catch(e){ items.forEach(u=>{ const d=baseDraft(u,"ai"); d.error=aiFail(e); S.drafts[u.key]=d; }); }
+  finally { delete S.aiBusy.all; items.forEach(u=>delete S.aiBusy[u.key]); render(); }
+}
+
+async function onUnknownAction(act, k, u, btn){
+  if (act==="ask") return askOne(u);
+  if (act==="copyprompt"){
+    const t = aiPrompt([u]);
+    try { await navigator.clipboard.writeText(t); const s=document.getElementById("t-"+k); if (s){ s.hidden=false; setTimeout(()=>s.hidden=true,1500); } }
+    catch { const ta = document.getElementById("paste"); ta.value = t; ta.focus(); ta.select(); }
     return;
   }
-  const imp = S.imports.find(i=>i.failed.includes(a.table)) || S.imports[0];
-  const errs = a.hits.filter(h=>h.rule.sev==="error"), infos = a.hits.filter(h=>h.rule.sev==="info"||h.rule.sev==="warning"), noise = a.hits.filter(h=>h.rule.sev==="noise");
-  const keyCount = a.keys?.length;
-  const head = a.root
-    ? `<h3>${esc(a.table)}: ${esc(a.root.rule.title.toLowerCase())}${a.root.rule.id==="KEY16" && keyCount ? ` (${keyCount} key fields, limit 16)`:""}</h3><p>${esc(a.root.rule.explain)}</p>`
-    : `<h3>${esc(a.table)}: no known root cause</h3><p>The log only has generic or unrecognised messages. See the unmatched lines below.</p>`;
-
-  let meter = "";
-  if (a.isCond && a.keys){
-    const cells = a.keys.map((f,i)=>{
-      const fixed = FIXED_KEYS.includes(f), over = i>=16;
-      return `<span class="cell ${fixed?"fixed":""} ${over?"over":""} ${i===15 && a.keys.length>16?"limit":""}" title="${esc(f)}">${i+1}</span>`;
-    }).join("");
-    meter = `<div class="meter">
-      <div class="eyebrow">Key fields: ${keyCount} of 16 allowed</div>
-      <div class="cells" role="img" aria-label="${keyCount} key fields; limit 16">${cells}</div>
-      <div class="legend"><span><em style="background:var(--sunk);outline:1px solid var(--line)"></em>Fixed (${a.fixedCount})</span><span><em style="background:var(--accent-soft)"></em>Variable (${a.varKeys.length})</span>${keyCount>16?`<span><em style="background:var(--err)"></em>Over the limit (${keyCount-16})</span>`:""}</div>
-    </div>`;
+  if (act==="noise"){ const d = baseDraft(u,"noise"); d.severity="noise"; d.category="Noise"; d.title="Ignore: "+u.line.slice(0,60); d.rootCause="Marked as safe to ignore by the team."; S.drafts[k]=d; render(); return; }
+  if (act==="manual"){ S.drafts[k] = baseDraft(u,"manual"); render(); return; }
+  const d = S.drafts[k]; if (!d) return;
+  if (act==="discard"){ delete S.drafts[k]; render(); return; }
+  if (!d.title.trim()){ d.error = "Give the rule a title before saving."; render(); return; }
+  try { new RegExp(d.pattern,"i"); } catch { d.error = "The match pattern isn't a valid regular expression."; render(); return; }
+  const rule = {title:d.title.trim(), category:d.category, severity:d.severity, rootCause:d.rootCause, fixSteps:d.fixSteps, transactions:d.transactions,
+    verify:d.verify, pattern:d.pattern, step:d.step, source:d.source, confidence:d.confidence||"", example:d.line.slice(0,300),
+    createdBy:S.me||null, createdAt:new Date().toISOString()};
+  if (act==="once" || !S.db){ S.session.push({...rule, id:"s-"+k}); delete S.drafts[k]; render(); return; }
+  if (act==="approve"){
+    btn.disabled = true; btn.textContent = "Saving…";
+    try { await S.db.collection("rules").add(rule); delete S.drafts[k]; }
+    catch(e){ d.error = e?.code==="invalid_argument" ? "You don't have permission to change the knowledge base." : e?.code==="quota_exceeded" ? "The knowledge base is full. Delete unused rules first." : "Couldn't save the rule. Try again."; if (e?.code==="invalid_argument") S.canWrite=false; }
+    render();
   }
-
-  const fieldRows = a.fields.map((f,i)=>{
-    const isKey = a.keys ? a.keys.includes(f) : null;
-    const over = a.keys && a.keys.indexOf(f) >= 16;
-    return `<tr><td class="num">${i+1}</td><td class="f">${esc(f)}</td><td>${isKey===null?"":`<span class="pill ${over?"over":isKey?"key":"nk"}">${over?"key · over limit":isKey?"key":"non-key"}</span>`}</td><td>${esc(fieldOrigin(f))}</td></tr>`;
-  }).join("");
-
-  const msg = h => `<div class="msg"><span class="sev ${h.rule.sev}">${h.rule.sev}</span><div class="txt"><span class="line">${esc(h.line)}</span><span class="why">${esc(h.rule.explain)}</span></div></div>`;
-  const noiseGroups = {};
-  noise.forEach(h=>{ (noiseGroups[h.rule.id] ||= {rule:h.rule, items:[]}).items.push(h.line.match(h.rule.re)?.[1] || h.line); });
-
-  el.innerHTML = `
-    <div class="row" style="justify-content:space-between">
-      <h2 id="h-diag">Diagnosis</h2>
-      ${tables.length>1?`<div class="chips">${tables.map(t=>`<button type="button" class="chip ${t===S.selected?"sel":""}" data-t="${esc(t)}">${esc(t)}</button>`).join("")}</div>`:""}
-    </div>
-    <div class="verdict ${a.verdict}"><span class="stripe"></span><div class="body">
-      <span class="eyebrow">Root cause${a.root?` · rule ${a.root.rule.id}`:""}</span>${head}
-    </div></div>
-    <div class="grid2">
-      <div style="display:grid;gap:16px;align-content:start;min-width:0">
-        ${meter}
-        ${a.fields.length?`<div class="tablewrap"><table><thead><tr><th>#</th><th>Field</th><th>Role</th><th>Origin</th></tr></thead><tbody>${fieldRows}</tbody></table></div>`:""}
-      </div>
-      <div style="display:grid;gap:16px;align-content:start;min-width:0">
-        <div style="display:grid;gap:8px"><h3>Fix, in order</h3><ol class="steps">${stepsFor(a, imp).map(s=>`<li>${s}</li>`).join("")}</ol></div>
-      </div>
-    </div>
-    <div class="msgs">
-      <h3>Messages that matter (${errs.length + infos.length})</h3>
-      ${[...errs, ...infos].map(msg).join("") || `<p class="hint">None.</p>`}
-    </div>
-    ${noise.length?`<details><summary>${noise.length} namespace warnings, safe to ignore</summary><div class="msgs" style="margin-top:10px">${Object.values(noiseGroups).map(g=>`<div class="msg"><span class="sev noise">noise</span><div class="txt"><span class="line">${esc(g.rule.title)}: ${g.items.map(esc).join(", ")}</span><span class="why">${esc(g.rule.explain)}</span></div></div>`).join("")}</div></details>`:""}
-    ${a.unmatched.length?`<details open><summary>${a.unmatched.length} lines no rule recognised</summary><pre class="mono" style="white-space:pre-wrap;font-size:.78rem;margin:10px 0 0">${a.unmatched.map(esc).join("\n")}</pre></details>`:""}
-  `;
-  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ S.selected=b.dataset.t; render(); });
 }
 
-function ticketText(){
-  const lines = [];
-  S.imports.forEach(imp=>{
-    lines.push(`Transport ${imp.trkorr} → ${imp.system}: RC ${imp.rc} (${rcText(imp.rc)})`);
-    lines.push(`Step: ${imp.step}; method ${imp.method || "-"} ${imp.object?`(${imp.object})`:""}`);
-    lines.push(`Objects: ${imp.saved.length} processed, ${imp.ok.length} activated, ${imp.failed.length} failed`);
-    if (imp.failed.length) lines.push(`Failed: ${imp.failed.join(", ")}`);
-    lines.push("");
-  });
-  Object.values(S.acts).forEach(a=>{
-    const imp = S.imports.find(i=>i.failed.includes(a.table)) || S.imports[0];
-    lines.push(`${a.table}: ${a.root ? a.root.rule.title : "root cause not identified"}${a.keys?` (key fields ${a.keys.length}/16; variable ${a.varKeys.length})`:""}`);
-    if (a.root) lines.push(`  Evidence: "${a.root.line}"`);
-    if (a.varKeys) lines.push(`  Variable keys: ${a.varKeys.join(", ")}`);
-    stepsFor(a, imp).forEach((s,i)=>lines.push(`  ${i+1}. ${s.replace(/<[^>]+>/g,"")}`));
-    lines.push("");
-  });
-  return lines.join("\n").trim();
+/* ---------- Stage 5: remember ---------- */
+function caseId(A){
+  const trs = [...new Set(A.map(l=>l.tr).filter(Boolean))].sort();
+  const sys = [...new Set(A.map(l=>l.target).filter(Boolean))].sort();
+  if (!trs.length) return "";
+  return (trs.join("+")+"_"+sys.join("+")).replace(/[^A-Za-z0-9_+.-]/g,"").slice(0,180);
 }
-
-function renderTicket(){
-  const el = document.getElementById("secTicket");
-  if (!S.imports.length && !Object.keys(S.acts).length){ el.innerHTML = `<h2 id="h-ticket">Ticket summary</h2><div class="empty">The incident text appears here once logs are loaded.</div>`; return; }
-  el.innerHTML = `
-    <div class="row" style="justify-content:space-between"><h2 id="h-ticket">Ticket summary</h2>
-      <div class="row"><span class="toast" id="copied" hidden>Copied</span><button type="button" id="btnCopy">Copy text</button></div></div>
-    <textarea id="ticket" readonly style="min-height:220px">${esc(ticketText())}</textarea>`;
-  document.getElementById("btnCopy").onclick = async ()=>{
+function ticketText(A){
+  const out = [];
+  A.forEach(l=>out.push(`${l.tr||"?"} → ${l.target||"?"} · step ${l.letter} (${STEPS[l.letter]||""}) · RC ${l.rc ?? "?"}: ${rcInfo(l.rc).text}`));
+  out.push("");
+  groupFindings(A).filter(g=>g.rule.sev==="error"||g.rule.sev==="warning").forEach(g=>{
+    out.push(`${g.rule.title}${g.objs.size?` (${[...g.objs].join(", ")})`:""} [${g.rule.source==="builtin"?"built-in rule":"team rule"}]`);
+    out.push(`  Cause: ${g.rule.cause}`);
+    (g.rule.fix||[]).forEach((f,i)=>out.push(`  ${i+1}. ${f}`));
+    out.push("");
+  });
+  const unk = unknownGroups(A).filter(u=>u.errorish && !S.drafts[u.key]);
+  if (unk.length){ out.push("Not yet diagnosed:"); unk.forEach(u=>out.push(`  - ${u.line}`)); }
+  return out.join("\n").trim();
+}
+function renderRemember(A){
+  const el = document.getElementById("secRemember");
+  const head = `<div class="ph"><h2 id="h-rem"><span class="stage">5</span>Remember the case</h2><span class="hint">Saved cases power "seen before" and the history view.</span></div>`;
+  if (!A.length){ el.innerHTML = head + `<div class="empty">Once logs are analysed, save the case for the team and copy the ticket text.</div>`; return; }
+  const id = caseId(A), exists = S.cases.find(c=>c.id===id);
+  el.innerHTML = head + `
+    <div class="row">
+      ${S.db && id && S.canWrite!==false ? `<button type="button" class="primary" id="btnSaveCase">${exists?"Update saved case":"Save case to history"}</button>` : ""}
+      <button type="button" id="btnCopyTicket">Copy ticket text</button>
+      <span class="toast" id="caseMsg" hidden></span>
+    </div>
+    ${!id ? `<p class="hint">No transport request number found in these logs, so the case can't be saved.</p>` : exists ? `<p class="hint">This request was analysed before on ${esc(fmtDate(exists.at))}.</p>` : ""}
+    <textarea class="ticket" id="ticket" readonly>${esc(ticketText(A))}</textarea>`;
+  const sc = document.getElementById("btnSaveCase");
+  if (sc) sc.onclick = async ()=>{
+    sc.disabled = true;
+    const groups = groupFindings(A).filter(g=>g.rule.sev!=="noise");
+    const body = {tr:[...new Set(A.map(l=>l.tr).filter(Boolean))].join(", "), system:[...new Set(A.map(l=>l.target).filter(Boolean))].join(", "),
+      rc: Math.max(...A.map(l=>l.rc ?? 0)), steps:A.map(l=>({step:l.letter, rc:l.rc})),
+      ruleKeys: groups.map(g=>ruleKey(g.rule)),
+      findings: groups.slice(0,60).map(g=>({key:ruleKey(g.rule), title:g.rule.title, sev:g.rule.sev, cat:g.rule.cat, objs:[...g.objs].slice(0,40)})),
+      unknown: unknownGroups(A).filter(u=>u.errorish).length, at:new Date().toISOString(), by:S.me||null};
+    try { await S.db.doc("cases/"+id).set(body); S.lastSaved = id; const m=document.getElementById("caseMsg"); if (m){ m.textContent="Case saved"; m.hidden=false; } }
+    catch(e){ const m=document.getElementById("caseMsg"); if (m){ m.textContent = e?.code==="invalid_argument" ? "You don't have permission to save cases." : "Couldn't save the case. Try again."; m.className="bad"; m.hidden=false; } sc.disabled=false; }
+    renderPipe(analyzeAll());
+  };
+  document.getElementById("btnCopyTicket").onclick = async ()=>{
     const ta = document.getElementById("ticket");
-    try { await navigator.clipboard.writeText(ta.value); const c=document.getElementById("copied"); c.hidden=false; setTimeout(()=>c.hidden=true,1600); }
-    catch { ta.focus(); ta.select(); }
+    try { await navigator.clipboard.writeText(ta.value); const m=document.getElementById("caseMsg"); m.textContent="Copied"; m.className="toast"; m.hidden=false; } catch { ta.focus(); ta.select(); }
   };
 }
 
-/* ---------- Claude ---------- */
-let sampleFn = null, aiCtl = null;
-function renderAI(){
-  const el = document.getElementById("secAI");
-  if (!sampleFn){ el.hidden = true; return; }
-  el.hidden = false;
-  if (el.dataset.ready) return;
-  el.dataset.ready = "1";
-  el.innerHTML = `
-    <div class="row" style="justify-content:space-between"><h2 id="h-ai">Ask Claude for a second opinion</h2>
-      <div class="row"><button type="button" class="primary" id="btnAsk">Explain this case</button><button type="button" id="btnStop" hidden>Stop</button></div></div>
-    <p class="hint">Sends the parsed findings and any unrecognised log lines (not whole files) to Claude on your own account. Use it for messages the rules don't cover, or to check a redesign idea.</p>
-    <label for="aiQ" class="hint">Optional question</label>
-    <textarea id="aiQ" style="min-height:60px" placeholder="e.g. Which of the 12 variable fields are the best candidates to merge?"></textarea>
-    <div class="ai-out" id="aiOut" aria-live="polite"></div>`;
-  document.getElementById("btnAsk").onclick = askClaude;
-  document.getElementById("btnStop").onclick = ()=>aiCtl?.abort();
+/* =====================================================================
+   Knowledge base view
+   ===================================================================== */
+let kbEdit = null, kbConfirm = null;
+function renderKb(){
+  const el = document.getElementById("viewKb");
+  const seen = seenStats();
+  const team = [...S.learned.map(r=>({...r, _team:"shared"})), ...S.session.map(r=>({...r, _team:"session"}))];
+  const rows = [
+    ...team.map(r=>({key:"t:"+r.id, title:r.title, cat:r.category, sev:r.severity, src:r._team==="session"?"This session only":(r.source==="ai"?"Team · AI-assisted":r.source==="noise"?"Team · noise":"Team"), pattern:r.pattern, cause:r.rootCause, team:r})),
+    ...BUILTIN.map(r=>({key:"b:"+r.id, title:r.title, cat:r.cat, sev:r.sev, src:"Built-in", pattern:r.re.source, cause:r.cause}))
+  ].filter(r=>(!S.kbCat || r.cat===S.kbCat) && (!S.kbFilter || (r.title+" "+r.cause+" "+r.pattern).toLowerCase().includes(S.kbFilter.toLowerCase())));
+  resolveNames(S.learned.map(r=>r.createdBy).filter(Boolean));
+  const byCat = CATS.map(c=>({c, n:[...BUILTIN.filter(r=>r.cat===c), ...team.filter(r=>r.category===c)].length})).filter(x=>x.n);
+  el.innerHTML = `<section class="panel" aria-labelledby="h-kbv">
+    <div class="ph"><h2 id="h-kbv">Knowledge base</h2><div class="row"><button type="button" id="btnExport">Copy as JSON</button><span class="toast" id="kbMsg" hidden></span></div></div>
+    <p class="hint">${BUILTIN.length} built-in rules, ${S.learned.length} learned by the team${S.session.length?`, ${S.session.length} for this session only`:""}. Team rules are checked first, so a team rule can refine a built-in one.</p>
+    <div class="row">${byCat.map(x=>`<button type="button" class="${S.kbCat===x.c?"primary":""}" data-cat="${esc(x.c)}">${esc(x.c)} · ${x.n}</button>`).join("")}${S.kbCat?`<button type="button" class="link" data-cat="">All categories</button>`:""}</div>
+    <input type="search" id="kbSearch" placeholder="Search rules…" value="${esc(S.kbFilter)}" aria-label="Search rules">
+    ${kbEdit ? kbEditForm(kbEdit) : ""}
+    <div class="tablewrap"><table><thead><tr><th>Rule</th><th>Category</th><th>Severity</th><th>Source</th><th>Seen</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>{ const s=seen[r.key]; return `<tr><td><b>${esc(r.title)}</b><div class="hint">${esc(r.cause)}</div><div class="hint mono" style="overflow-wrap:anywhere">${esc(r.pattern)}</div>${r.team&&r.team.createdBy?`<div class="hint">Approved by ${esc(nameOf(r.team.createdBy)||"a team member")}${r.team.createdAt?`, ${esc(fmtDate(r.team.createdAt))}`:""}</div>`:""}</td>
+      <td>${esc(r.cat)}</td><td><span class="pill ${esc(r.sev)}">${esc(r.sev)}</span></td><td>${esc(r.src)}</td><td class="m">${s?`${s.n}× · ${esc(fmtDate(s.last))}`:"–"}</td>
+      <td>${r.team && r.team._team==="shared" && S.canWrite!==false ? (kbConfirm===r.team.id ? `<div class="row"><button type="button" class="danger" data-del="${esc(r.team.id)}">Delete rule</button><button type="button" data-cancel="1">Keep</button></div>` : `<div class="row"><button type="button" data-edit="${esc(r.team.id)}">Edit</button><button type="button" data-ask="${esc(r.team.id)}">Delete</button></div>`) : ""}</td></tr>`; }).join("") || `<tr><td colspan="6" class="hint">No rules match.</td></tr>`}
+    </tbody></table></div></section>`;
+  el.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{ S.kbCat=b.dataset.cat; renderKb(); });
+  const s = document.getElementById("kbSearch"); s.oninput = ()=>{ S.kbFilter=s.value; const pos=s.selectionStart; renderKb(); const n=document.getElementById("kbSearch"); n.focus(); n.setSelectionRange(pos,pos); };
+  el.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>{ kbConfirm=b.dataset.ask; renderKb(); });
+  el.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{ kbConfirm=null; renderKb(); });
+  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ b.disabled=true; try { await S.db.doc("rules/"+b.dataset.del).delete(); } catch {} kbConfirm=null; render(); });
+  el.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ const r=S.learned.find(x=>x.id===b.dataset.edit); kbEdit = r ? JSON.parse(JSON.stringify(r)) : null; renderKb(); });
+  document.getElementById("btnExport").onclick = async ()=>{
+    const json = JSON.stringify({exportedAt:new Date().toISOString(), rules:S.learned.map(({id,createdBy,...r})=>r)}, null, 2);
+    const m = document.getElementById("kbMsg");
+    try { await navigator.clipboard.writeText(json); m.textContent = `Copied ${S.learned.length} team rules`; m.hidden=false; } catch { m.textContent="Copy isn't allowed here"; m.hidden=false; }
+  };
+  if (kbEdit) wireKbEdit();
 }
-async function askClaude(){
-  const out = document.getElementById("aiOut"), ask = document.getElementById("btnAsk"), stop = document.getElementById("btnStop");
-  const unmatched = Object.values(S.acts).flatMap(a=>a.unmatched.map(l=>`${a.table}: ${l}`));
-  const errors = Object.values(S.acts).flatMap(a=>a.hits.filter(h=>h.rule.sev!=="noise").map(h=>`${a.table}: ${h.line}`));
-  const prompt = `You are a senior SAP Basis and SD pricing consultant. A transport import into an SAP S/4HANA quality system failed. Explain the root cause and give a precise, ordered fix. Name transactions and reports. Say plainly when you are unsure. Keep it under 350 words, plain text with short numbered steps.
-
-ANALYZER FINDINGS
-${ticketText()}
-
-ERROR/INFO LOG LINES
-${errors.join("\n") || "(none)"}
-
-LINES NO RULE RECOGNISED
-${unmatched.join("\n") || "(none)"}
-
-USER QUESTION
-${document.getElementById("aiQ").value.trim() || "(none: explain the case)"}`.slice(0, 60000);
-  aiCtl = new AbortController();
-  ask.disabled = true; stop.hidden = false; out.textContent = "Thinking…";
-  try {
-    await sampleFn(prompt, {signal: aiCtl.signal, onText: ({text})=>{ out.textContent = text; }});
-  } catch(e){
-    out.textContent = e?.text || "";
-    const copy = {not_granted:"Claude isn't allowed for this page. You can allow it from the artifact's permissions.", rate_limited:"Too many requests. Try again in a minute.", session_expired:"Sign in again to use Claude.", refused:"Claude declined this input. Rephrase the question."}[e?.code];
-    if (e?.code !== "cancelled") out.textContent += (out.textContent?"\n\n":"") + (copy || "The request didn't complete. Try again.");
-    if (["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e?.code)){ document.getElementById("secAI").hidden = true; sampleFn = null; }
-  } finally { ask.disabled = false; stop.hidden = true; }
+function kbEditForm(r){
+  return `<div class="draft kbedit"><b>Edit team rule</b><div class="formgrid">
+    <label class="f wide">Title<input type="text" id="e-title" value="${esc(r.title)}"></label>
+    <label class="f">Category<select id="e-cat">${CATS.map(c=>`<option ${c===r.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+    <label class="f">Severity<select id="e-sev">${["error","warning","info","symptom","noise"].map(s=>`<option ${s===r.severity?"selected":""}>${s}</option>`).join("")}</select></label>
+    <label class="f">Transactions<input type="text" id="e-tx" value="${esc((r.transactions||[]).join(", "))}"></label>
+    <label class="f wide">Root cause<textarea id="e-cause" style="font-family:var(--f-body)">${esc(r.rootCause)}</textarea></label>
+    <label class="f wide">Fix steps (one per line)<textarea id="e-fix" style="font-family:var(--f-body)">${esc((r.fixSteps||[]).join("\n"))}</textarea></label>
+    <label class="f wide">How to confirm<input type="text" id="e-ver" value="${esc(r.verify||"")}"></label>
+    <label class="f wide">Match pattern<input type="text" id="e-pat" class="mono" value="${esc(r.pattern)}"></label>
+  </div><div class="row"><button type="button" class="primary" id="e-save">Save changes</button><button type="button" id="e-cancel">Cancel</button><span class="bad" id="e-err"></span></div></div>`;
+}
+function wireKbEdit(){
+  document.getElementById("e-cancel").onclick = ()=>{ kbEdit=null; renderKb(); };
+  document.getElementById("e-save").onclick = async ()=>{
+    const v = id=>document.getElementById(id).value;
+    try { new RegExp(v("e-pat"),"i"); } catch { document.getElementById("e-err").textContent="The pattern isn't valid."; return; }
+    const {id, ...rest} = kbEdit;
+    const body = {...rest, title:v("e-title").trim(), category:v("e-cat"), severity:v("e-sev"), transactions:v("e-tx").split(",").map(s=>s.trim()).filter(Boolean),
+      rootCause:v("e-cause"), fixSteps:v("e-fix").split("\n").map(s=>s.trim()).filter(Boolean), verify:v("e-ver"), pattern:v("e-pat"), editedBy:S.me||null, editedAt:new Date().toISOString()};
+    try { await S.db.doc("rules/"+id).set(body); kbEdit=null; render(); }
+    catch(e){ document.getElementById("e-err").textContent = e?.code==="invalid_argument" ? "You don't have permission to edit rules." : "Couldn't save. Try again."; }
+  };
 }
 
-/* ---------- KB table ---------- */
-document.getElementById("kbTable").innerHTML = `<thead><tr><th>Rule</th><th>Severity</th><th>Meaning</th></tr></thead><tbody>${
-  KB.map(r=>`<tr><td>${r.id}</td><td><span class="sev ${r.sev} pill" style="color:var(--surface)">${r.sev}</span></td><td><b>${esc(r.title)}.</b> ${esc(r.explain)}</td></tr>`).join("")}</tbody>`;
-
-/* ---------- wiring ---------- */
-function loadExample(){
-  S = {files:[], imports:[], acts:{}, selected:null};
-  ingest(SAMPLE_TR, "DS4R904917.QS4 (import log)");
-  ingest(SAMPLE_ACT, "A9HU activation log");
-  S.selected = "A9HU";
-  render();
+/* =====================================================================
+   Case history view
+   ===================================================================== */
+function renderHistory(){
+  const el = document.getElementById("viewHistory");
+  resolveNames(S.cases.map(c=>c.by).filter(Boolean));
+  const cats = {}; S.cases.forEach(c=>(c.findings||[]).filter(f=>f.sev==="error"||f.sev==="warning").forEach(f=>{ cats[f.title]=(cats[f.title]||0)+1; }));
+  const top = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  el.innerHTML = `<section class="panel" aria-labelledby="h-hist">
+    <div class="ph"><h2 id="h-hist">Case history</h2><span class="hint">${S.db ? "Shared with everyone who can open this page." : "Shared memory isn't available in this view."}</span></div>
+    ${top.length ? `<div style="display:grid;gap:6px"><h3>Most frequent root causes</h3>${top.map(([t,n])=>`<div class="row" style="gap:10px"><span style="min-width:2.5em" class="mono">${n}×</span><div style="flex:1;min-width:120px;height:8px;background:var(--sunk);border-radius:99px;overflow:hidden"><div style="width:${n/top[0][1]*100}%;height:100%;background:var(--accent)"></div></div><span style="flex:2;min-width:160px">${esc(t)}</span></div>`).join("")}</div>` : ""}
+    ${S.cases.length ? `<div class="tablewrap"><table><thead><tr><th>Date</th><th>Request</th><th>Target</th><th>RC</th><th>Root causes</th><th>Unknown</th><th>Saved by</th></tr></thead><tbody>
+      ${S.cases.map(c=>`<tr><td class="m">${esc(fmtDate(c.at))}</td><td class="m">${esc(c.tr)}</td><td class="m">${esc(c.system)}</td><td><span class="rc ${rcInfo(c.rc).cls}">${esc(c.rc)}</span></td>
+        <td>${(c.findings||[]).filter(f=>f.sev==="error"||f.sev==="warning").map(f=>`${esc(f.title)}${f.objs&&f.objs.length?` <span class="hint mono">(${f.objs.slice(0,4).map(esc).join(", ")}${f.objs.length>4?"…":""})</span>`:""}`).join("<br>") || "–"}</td>
+        <td class="m">${esc(c.unknown||0)}</td><td>${esc(nameOf(c.by)||"–")}</td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="empty">No cases saved yet. Analyse a log on the Triage tab and choose "Save case to history".</div>`}
+  </section>`;
 }
-document.getElementById("btnExample").onclick = loadExample;
-document.getElementById("btnClear").onclick = ()=>{ S = {files:[], imports:[], acts:{}, selected:null}; render(); };
-document.getElementById("btnPaste").onclick = ()=>{ const t = document.getElementById("paste").value; if (t.trim()){ ingest(t, "pasted text"); render(); document.getElementById("paste").value=""; } };
-async function handleFiles(list){ for (const f of list){ try { ingest(await readFile(f), f.name); } catch(e){ S.files.push({name:f.name+" (unreadable)", kind:"error"}); } } render(); }
+
+/* =====================================================================
+   Wiring and runtime
+   ===================================================================== */
+function resetAndLoad(pairs){ S.logs=[]; S.drafts={}; S.showAllUnmatched=false; S.lastSaved=""; pairs.forEach(([t,n])=>addLog(t,n)); render(); }
+document.getElementById("btnEx1").onclick = ()=>resetAndLoad([[SAMPLE_TR,"DS4R904917.QS4"],[SAMPLE_ACT,"A9HU activation log (SE11)"]]);
+document.getElementById("btnEx2").onclick = ()=>resetAndLoad([[SAMPLE_SYN,"DS4G905102.QS4 (synthetic example)"]]);
+document.getElementById("btnClear").onclick = ()=>resetAndLoad([]);
+document.getElementById("btnPaste").onclick = ()=>{ const t=document.getElementById("paste").value; if (t.trim()){ addLog(t,"pasted text"); document.getElementById("paste").value=""; render(); } };
+async function handleFiles(list){ for (const f of list){ try { addLog(await readFile(f), f.name); } catch { S.logs.push({id:hash(f.name), name:f.name+" (unreadable)", letter:"?", tr:"", target:"", lines:[]}); } } render(); }
 document.getElementById("file").onchange = e=>handleFiles(e.target.files);
 const drop = document.getElementById("drop");
 drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("over"); });
 drop.addEventListener("dragleave", ()=>drop.classList.remove("over"));
 drop.addEventListener("drop", e=>{ e.preventDefault(); drop.classList.remove("over"); handleFiles(e.dataTransfer.files); });
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.view; try{ localStorage.setItem("tit-view", S.view); }catch{} render(); });
+try { const v = localStorage.getItem("tit-view"); if (v && ["triage","kb","history"].includes(v)) S.view = v; } catch {}
 
-loadExample();
-(async()=>{ try { sampleFn = await window.claude?.use?.("sample") ?? null; } catch { sampleFn = null; } renderAI(); })();
+resetAndLoad([[SAMPLE_TR,"DS4R904917.QS4"],[SAMPLE_ACT,"A9HU activation log (SE11)"]]);
+
+(async()=>{
+  const c = window.claude;
+  if (!c?.use) return;
+  const [db, sample, user] = await Promise.all([c.use("db").catch(()=>null), c.use("sample").catch(()=>null), c.use("user").catch(()=>null)]);
+  S.sample = sample; S.user = user; S.db = db;
+  if (user){ S.me = await user.id(); S.canWrite = await user.can("data.write"); }
+  if (db){
+    db.collection("rules").onSnapshot(snap=>{ S.learned = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{ });
+    db.collection("cases").orderBy("at","desc").limit(300).onSnapshot(snap=>{ S.cases = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{ });
+  }
+  render();
+})();
 </script>
