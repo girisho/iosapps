@@ -4,7 +4,7 @@ Tools that help the Basis team find the root cause when an S/4HANA transport imp
 
 | File | What it is | Where it runs |
 |---|---|---|
-| `index.html` | Learning log triage (published as a claude.ai artifact). Five stages: read any tp step log, explain step and RC, match against the team's knowledge base and built-in rules, let the user decide on unknown errors (ask AI, mark as noise, or write the rule), and remember the approved rule and the case. Team rules and case history live in the artifact's shared store. | claude.ai artifact; logs are parsed in the browser |
+| `index.html` | Learning log triage (published as a claude.ai artifact) with two sections: **S/4HANA transports** (tp/STMS/SE11 logs) and **BTP Cloud Transport** (Cloud Transport Management action logs; Integration Suite via Content Agent now, MTA/CAP apps next). Five stages: read any tp step log, explain step and RC, match against the team's knowledge base and built-in rules, let the user decide on unknown errors (ask AI, mark as noise, or write the rule), and remember the approved rule and the case. Team rules and case history live in the artifact's shared store. | claude.ai artifact; logs are parsed in the browser |
 | `abap/zbc_cond_table_precheck.abap` | ABAP report that checks condition tables in the system directly: more than 16 key fields, fields missing from `KOMG`, inactive data elements, inactive table versions. ALV output. | DEV before release; QAS/PRD after a failed import |
 
 ## Recommended operating model
@@ -17,3 +17,9 @@ Tools that help the Basis team find the root cause when an S/4HANA transport imp
 
 - 194 condition tables processed: 175 activated, 19 failed, RC 8.
 - A9HU: 17 key fields (MANDT, KAPPL, KSCHL, KFRST, DATBI plus 12 variable fields). The dictionary limit is 16, so the table can't be activated in any system. It has to be redesigned in DS4 with 11 or fewer variable fields.
+
+## Case cTMS action 14576 → IntegrationSuite-QA (2026-09-29)
+
+- Integration Suite package CPACIntegrationWithSAPS4HANA, deployed through Content Agent service; status 8.
+- Cloud Integration returned `UniquenessViolationException`: a package or artifact with the same ID already exists in the QA tenant (typically the same artifact ID in another package, or a package imported or copied outside cTMS).
+- The request was forwarded to IntegrationSuite-PREPROD before the QA import ran, so the failed content is already in that queue.

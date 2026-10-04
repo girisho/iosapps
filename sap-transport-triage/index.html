@@ -116,66 +116,93 @@ td.m{font-family:var(--f-mono);font-size:.78rem}
 .ticket{min-height:200px}
 @media (prefers-reduced-motion:no-preference){button{transition:border-color .15s,background .15s}}
 </style>
+<style>
+.sevI{color:var(--muted)} .sevW{color:var(--warn);font-weight:600} .sevE{color:var(--err);font-weight:600}
+tr.rowE td{background:var(--err-soft)} tr.rowW td{background:var(--warn-soft)}
+.insight{display:grid;grid-template-columns:5px 1fr;gap:12px;padding:12px;border-radius:8px;background:var(--sunk)}
+.insight .stripe{border-radius:3px;background:var(--warn)} .insight.info .stripe{background:var(--info)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--f-mono);font-size:.78rem}
+.flow span.n{padding:4px 8px;border-radius:5px;background:var(--sunk);border:1px solid var(--line)}
+.flow span.n.bad{border-color:var(--err);color:var(--err);background:var(--err-soft)}
+.flow span.n.fwd{border-style:dashed}
+.facts{gap:0;background:var(--surface)} .fact{box-shadow:inset -1px -1px 0 var(--line)}
+.rc.long{white-space:normal}
+.panel,.logcard,.unk,.draft,.find .body{grid-template-columns:minmax(0,1fr)}
+.find h3{overflow-wrap:anywhere;min-width:0}
+.mono{overflow-wrap:anywhere} .badges .pill{white-space:normal}
+.cmd{font-family:var(--f-mono);font-size:.8rem;background:var(--sunk);padding:8px 10px;border-radius:6px;overflow-wrap:anywhere}
+</style>
 
 <div class="wrap">
   <header style="display:grid;gap:8px">
-    <span class="eyebrow">Basis · CTS · Import diagnostics that learn</span>
+    <span class="eyebrow">Basis · CTS and Cloud Transport · Import diagnostics that learn</span>
     <h1>Transport Import Triage</h1>
-    <p class="lede">Drop any transport log. Known errors get their fix straight from the team's knowledge base. For errors the tool hasn't seen, you choose whether to ask AI. Once a diagnosis is approved, the tool recognises that error from then on.</p>
+    <p class="lede">Drop a transport log from S/4HANA or from BTP Cloud Transport Management. Known errors get their fix straight from the team's knowledge base. For errors the tool hasn't seen, you choose whether to ask AI. Once a diagnosis is approved, the tool recognises that error from then on.</p>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Views">
-    <button type="button" role="tab" id="tab-triage" aria-selected="true" data-view="triage">Triage</button>
+    <button type="button" role="tab" id="tab-abap" aria-selected="true" data-view="abap">S/4HANA transports</button>
+    <button type="button" role="tab" id="tab-btp" aria-selected="false" data-view="btp">BTP Cloud Transport</button>
     <button type="button" role="tab" id="tab-kb" aria-selected="false" data-view="kb">Knowledge base</button>
     <button type="button" role="tab" id="tab-history" aria-selected="false" data-view="history">Case history</button>
   </nav>
 
-  <div id="viewTriage" style="display:grid;gap:24px">
-    <div class="pipe" id="pipe" aria-label="Analysis pipeline"></div>
-
-    <section class="panel" aria-labelledby="h-read">
-      <div class="ph"><h2 id="h-read"><span class="stage">1</span>Read the logs</h2>
-        <div class="row">
-          <button type="button" id="btnEx1">Example: DS4K904917 (condition tables)</button>
-          <button type="button" id="btnEx2">Example: generation error (synthetic)</button>
-          <button type="button" id="btnClear">Clear</button>
-        </div></div>
-      <div class="intake">
-        <div class="drop" id="drop">
-          <strong>Drop log files here</strong>
-          <span class="hint">Any tp step log from <code>/usr/sap/trans/log</code> (H, A, I, R, G…), STMS or SE01 log exports (.xlsx or .txt), SE11 activation logs, ALOG/SLOG extracts. Several at once is fine. Files are read in your browser.</span>
-          <input type="file" id="file" multiple>
-        </div>
-        <div style="display:grid;gap:8px;min-width:0">
-          <label for="paste" class="hint">Or paste log text</label>
-          <textarea id="paste" placeholder="Paste a transport log…"></textarea>
-          <div class="row"><button class="primary" id="btnPaste" type="button">Analyze pasted text</button></div>
-        </div>
-      </div>
-      <div class="row" id="loaded"></div>
-    </section>
-
-    <section class="panel" id="secUnderstand" aria-labelledby="h-und"></section>
-    <section class="panel" id="secKnown" aria-labelledby="h-known"></section>
-    <section class="panel" id="secUnknown" aria-labelledby="h-unk"></section>
-    <section class="panel" id="secRemember" aria-labelledby="h-rem"></section>
-  </div>
-
-  <div id="viewKb" hidden style="display:grid;gap:24px"></div>
-  <div id="viewHistory" hidden style="display:grid;gap:24px"></div>
+  <div id="view-abap" class="ws"></div>
+  <div id="view-btp" class="ws" hidden></div>
+  <div id="view-kb" hidden style="display:grid;gap:24px"></div>
+  <div id="view-history" hidden style="display:grid;gap:24px"></div>
 </div>
 
 <script>
 const SAMPLE_TR = "Log File                 /usr/sap/trans/log/DS4R904917.QS4\n\n\nI1 I2 I3 ED Log Text\n\n######################################\nExecution of programs after import (XPRA)\nTransport request   : DS4K904917\nSystem              : QS4\ntp path             : tp\nVersion and release: 381.588.09 793\n\n\nPost-import methods for change/transport request: DS4K904917\n\nPost-import method RV_COND_TABLE_GEN_ACT_METHOD started for VKOS L, date and time: 20261003125630\nTable generator started\nTable A9CE has been saved\nMessage from the Data Dictionary:\nTable A9CE activated\nTable generator started\nTable A9CG has been saved\nMessage from the Data Dictionary:\nTable A9CG activated\nTable generator started\nTable A9DA has been saved\nMessage from the Data Dictionary:\nTable A9DA activated\nTable generator started\nTable A9DD has been saved\nMessage from the Data Dictionary:\nTable A9DD activated\nTable generator started\nTable A9DP has been saved\nMessage from the Data Dictionary:\nTable A9DP activated\nTable generator started\nTable A9DR has been saved\nMessage from the Data Dictionary:\nTable A9DR activated\nTable generator started\nTable A9DS has been saved\nMessage from the Data Dictionary:\nTable A9DS activated\nTable generator started\nTable A9DT has been saved\nMessage from the Data Dictionary:\nTable A9DT activated\nTable generator started\nTable A9DU has been saved\nMessage from the Data Dictionary:\nTable A9DU activated\nTable generator started\nTable A9EA has been saved\nMessage from the Data Dictionary:\nTable A9EA activated\nTable generator started\nTable A9EB has been saved\nMessage from the Data Dictionary:\nTable A9EB activated\nTable generator started\nTable A9EC has been saved\nMessage from the Data Dictionary:\nTable A9EC activated\nTable generator started\nTable A9ED has been saved\nMessage from the Data Dictionary:\nTable A9ED activated\nTable generator started\nTable A9EE has been saved\nMessage from the Data Dictionary:\nTable A9EE activated\nTable generator started\nTable A9EF has been saved\nMessage from the Data Dictionary:\nTable A9EF activated\nTable generator started\nTable A9EG has been saved\nMessage from the Data Dictionary:\nTable A9EG activated\nTable generator started\nTable A9EH has been saved\nMessage from the Data Dictionary:\nTable A9EH activated\nTable generator started\nTable A9EI has been saved\nMessage from the Data Dictionary:\nTable A9EI activated\nTable generator started\nTable A9EJ has been saved\nMessage from the Data Dictionary:\nTable A9EJ activated\nTable generator started\nTable A9EK has been saved\nMessage from the Data Dictionary:\nTable A9EK activated\nTable generator started\nTable A9EL has been saved\nMessage from the Data Dictionary:\nTable A9EL activated\nTable generator started\nTable A9EM has been saved\nMessage from the Data Dictionary:\nTable A9EM activated\nTable generator started\nTable A9EN has been saved\nMessage from the Data Dictionary:\nTable A9EN activated\nTable generator started\nTable A9EO has been saved\nMessage from the Data Dictionary:\nTable A9EO activated\nTable generator started\nTable A9EP has been saved\nMessage from the Data Dictionary:\nTable A9EP activated\nTable generator started\nTable A9EQ has been saved\nMessage from the Data Dictionary:\nTable A9EQ activated\nTable generator started\nTable A9HA has been saved\nMessage from the Data Dictionary:\nTable A9HA activated\nTable generator started\nTable A9HB has been saved\nMessage from the Data Dictionary:\nTable A9HB activated\nTable generator started\nTable A9HC has been saved\nMessage from the Data Dictionary:\nTable A9HC activated\nTable generator started\nTable A9HD has been saved\nMessage from the Data Dictionary:\nTable A9HD activated\nTable generator started\nTable A9HE has been saved\nMessage from the Data Dictionary:\nTable A9HE activated\nTable generator started\nTable A9HH has been saved\nMessage from the Data Dictionary:\nTable A9HH activated\nTable generator started\nTable A9HI has been saved\nMessage from the Data Dictionary:\nTable A9HI activated\nTable generator started\nTable A9HJ has been saved\nMessage from the Data Dictionary:\nTable A9HJ activated\nTable generator started\nTable A9HK has been saved\nMessage from the Data Dictionary:\nTable A9HK activated\nTable generator started\nTable A9HL has been saved\nMessage from the Data Dictionary:\nTable A9HL activated\nTable generator started\nTable A9HM has been saved\nMessage from the Data Dictionary:\nTable A9HM activated\nTable generator started\nTable A9HN has been saved\nMessage from the Data Dictionary:\nTable A9HN activated\nTable generator started\nTable A9HO has been saved\nMessage from the Data Dictionary:\nTable A9HO activated\nTable generator started\nTable A9HP has been saved\nMessage from the Data Dictionary:\nTable A9HP activated\nTable generator started\nTable A9HQ has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9HR has been saved\nMessage from the Data Dictionary:\nTable A9HR activated\nTable generator started\nTable A9HS has been saved\nMessage from the Data Dictionary:\nTable A9HS activated\nTable generator started\nTable A9HT has been saved\nMessage from the Data Dictionary:\nTable A9HT activated\nTable generator started\nTable A9HU has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9HV has been saved\nMessage from the Data Dictionary:\nTable A9HV activated\nTable generator started\nTable A9IA has been saved\nMessage from the Data Dictionary:\nTable A9IA activated\nTable generator started\nTable A9IB has been saved\nMessage from the Data Dictionary:\nTable A9IB activated\nTable generator started\nTable A9IC has been saved\nMessage from the Data Dictionary:\nTable A9IC activated\nTable generator started\nTable A9ID has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9IE has been saved\nMessage from the Data Dictionary:\nTable A9IE activated\nTable generator started\nTable A9IF has been saved\nMessage from the Data Dictionary:\nTable A9IF activated\nTable generator started\nTable A9IG has been saved\nMessage from the Data Dictionary:\nTable A9IG activated\nTable generator started\nTable A9IH has been saved\nMessage from the Data Dictionary:\nTable A9IH activated\nTable generator started\nTable A9II has been saved\nMessage from the Data Dictionary:\nTable A9II activated\nTable generator started\nTable A9IJ has been saved\nMessage from the Data Dictionary:\nTable A9IJ activated\nTable generator started\nTable A9IK has been saved\nMessage from the Data Dictionary:\nTable A9IK activated\nTable generator started\nTable A9IL has been saved\nMessage from the Data Dictionary:\nTable A9IL activated\nTable generator started\nTable A9IM has been saved\nMessage from the Data Dictionary:\nTable A9IM activated\nTable generator started\nTable A9IN has been saved\nMessage from the Data Dictionary:\nTable A9IN activated\nTable generator started\nTable A9IO has been saved\nMessage from the Data Dictionary:\nTable A9IO activated\nTable generator started\nTable A9IP has been saved\nMessage from the Data Dictionary:\nTable A9IP activated\nTable generator started\nTable A9IQ has been saved\nMessage from the Data Dictionary:\nTable A9IQ activated\nTable generator started\nTable A9IR has been saved\nMessage from the Data Dictionary:\nTable A9IR activated\nTable generator started\nTable A9IS has been saved\nMessage from the Data Dictionary:\nTable A9IS activated\nTable generator started\nTable A9IT has been saved\nMessage from the Data Dictionary:\nTable A9IT activated\nTable generator started\nTable A9IU has been saved\nMessage from the Data Dictionary:\nTable A9IU activated\nTable generator started\nTable A9IV has been saved\nMessage from the Data Dictionary:\nTable A9IV activated\nTable generator started\nTable A9JA has been saved\nMessage from the Data Dictionary:\nTable A9JA activated\nTable generator started\nTable A9JB has been saved\nMessage from the Data Dictionary:\nTable A9JB activated\nTable generator started\nTable A9JC has been saved\nMessage from the Data Dictionary:\nTable A9JC activated\nTable generator started\nTable A9JD has been saved\nMessage from the Data Dictionary:\nTable A9JD activated\nTable generator started\nTable A9JE has been saved\nMessage from the Data Dictionary:\nTable A9JE activated\nTable generator started\nTable A9JF has been saved\nMessage from the Data Dictionary:\nTable A9JF activated\nTable generator started\nTable A9JG has been saved\nMessage from the Data Dictionary:\nTable A9JG activated\nTable generator started\nTable A9JH has been saved\nMessage from the Data Dictionary:\nTable A9JH activated\nTable generator started\nTable A9JI has been saved\nMessage from the Data Dictionary:\nTable A9JI activated\nTable generator started\nTable A9JJ has been saved\nMessage from the Data Dictionary:\nTable A9JJ activated\nTable generator started\nTable A9JK has been saved\nMessage from the Data Dictionary:\nTable A9JK activated\nTable generator started\nTable A9JL has been saved\nMessage from the Data Dictionary:\nTable A9JL activated\nTable generator started\nTable A9JM has been saved\nMessage from the Data Dictionary:\nTable A9JM activated\nTable generator started\nTable A9JN has been saved\nMessage from the Data Dictionary:\nTable A9JN activated\nTable generator started\nTable A9JO has been saved\nMessage from the Data Dictionary:\nTable A9JO activated\nTable generator started\nTable A9JP has been saved\nMessage from the Data Dictionary:\nTable A9JP activated\nTable generator started\nTable A9JQ has been saved\nMessage from the Data Dictionary:\nTable A9JQ activated\nTable generator started\nTable A9JR has been saved\nMessage from the Data Dictionary:\nTable A9JR activated\nTable generator started\nTable A9JS has been saved\nMessage from the Data Dictionary:\nTable A9JS activated\nTable generator started\nTable A9JT has been saved\nMessage from the Data Dictionary:\nTable A9JT activated\nTable generator started\nTable A9JU has been saved\nMessage from the Data Dictionary:\nTable A9JU activated\nTable generator started\nTable A9JV has been saved\nMessage from the Data Dictionary:\nTable A9JV activated\nTable generator started\nTable A9KA has been saved\nMessage from the Data Dictionary:\nTable A9KA activated\nTable generator started\nTable A9KB has been saved\nMessage from the Data Dictionary:\nTable A9KB activated\nTable generator started\nTable A9KC has been saved\nMessage from the Data Dictionary:\nTable A9KC activated\nTable generator started\nTable A9KD has been saved\nMessage from the Data Dictionary:\nTable A9KD activated\nTable generator started\nTable A9KE has been saved\nMessage from the Data Dictionary:\nTable A9KE activated\nTable generator started\nTable A9KF has been saved\nMessage from the Data Dictionary:\nTable A9KF activated\nTable generator started\nTable A9KG has been saved\nMessage from the Data Dictionary:\nTable A9KG activated\nTable generator started\nTable A9KH has been saved\nMessage from the Data Dictionary:\nTable A9KH activated\nTable generator started\nTable A9KI has been saved\nMessage from the Data Dictionary:\nTable A9KI activated\nTable generator started\nTable A9KJ has been saved\nMessage from the Data Dictionary:\nTable A9KJ activated\nTable generator started\nTable A9KK has been saved\nMessage from the Data Dictionary:\nTable A9KK activated\nTable generator started\nTable A9KL has been saved\nMessage from the Data Dictionary:\nTable A9KL activated\nTable generator started\nTable A9KM has been saved\nMessage from the Data Dictionary:\nTable A9KM activated\nTable generator started\nTable A9KN has been saved\nMessage from the Data Dictionary:\nTable A9KN activated\nTable generator started\nTable A9KO has been saved\nMessage from the Data Dictionary:\nTable A9KO activated\nTable generator started\nTable A9KP has been saved\nMessage from the Data Dictionary:\nTable A9KP activated\nTable generator started\nTable A9KQ has been saved\nMessage from the Data Dictionary:\nTable A9KQ activated\nTable generator started\nTable A9KR has been saved\nMessage from the Data Dictionary:\nTable A9KR activated\nTable generator started\nTable A9KS has been saved\nMessage from the Data Dictionary:\nTable A9KS activated\nTable generator started\nTable A9KT has been saved\nMessage from the Data Dictionary:\nTable A9KT activated\nTable generator started\nTable A9KU has been saved\nMessage from the Data Dictionary:\nTable A9KU activated\nTable generator started\nTable A9KV has been saved\nMessage from the Data Dictionary:\nTable A9KV activated\nTable generator started\nTable A9LA has been saved\nMessage from the Data Dictionary:\nTable A9LA activated\nTable generator started\nTable A9LB has been saved\nMessage from the Data Dictionary:\nTable A9LB activated\nTable generator started\nTable A9LC has been saved\nMessage from the Data Dictionary:\nTable A9LC activated\nTable generator started\nTable A9LD has been saved\nMessage from the Data Dictionary:\nTable A9LD activated\nTable generator started\nTable A9LE has been saved\nMessage from the Data Dictionary:\nTable A9LE activated\nTable generator started\nTable A9LF has been saved\nMessage from the Data Dictionary:\nTable A9LF activated\nTable generator started\nTable A9LG has been saved\nMessage from the Data Dictionary:\nTable A9LG activated\nTable generator started\nTable A9LH has been saved\nMessage from the Data Dictionary:\nTable A9LH activated\nTable generator started\nTable A9LI has been saved\nMessage from the Data Dictionary:\nTable A9LI activated\nTable generator started\nTable A9LJ has been saved\nMessage from the Data Dictionary:\nTable A9LJ activated\nTable generator started\nTable A9LK has been saved\nMessage from the Data Dictionary:\nTable A9LK activated\nTable generator started\nTable A9LL has been saved\nMessage from the Data Dictionary:\nTable A9LL activated\nTable generator started\nTable A9LM has been saved\nMessage from the Data Dictionary:\nTable A9LM activated\nTable generator started\nTable A9LN has been saved\nMessage from the Data Dictionary:\nTable A9LN activated\nTable generator started\nTable A9LO has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9LP has been saved\nMessage from the Data Dictionary:\nTable A9LP activated\nTable generator started\nTable A9LQ has been saved\nMessage from the Data Dictionary:\nTable A9LQ activated\nTable generator started\nTable A9LR has been saved\nMessage from the Data Dictionary:\nTable A9LR activated\nTable generator started\nTable A9LS has been saved\nMessage from the Data Dictionary:\nTable A9LS activated\nTable generator started\nTable A9LT has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9LU has been saved\nMessage from the Data Dictionary:\nTable A9LU activated\nTable generator started\nTable A9LV has been saved\nMessage from the Data Dictionary:\nTable A9LV activated\nTable generator started\nTable A9MA has been saved\nMessage from the Data Dictionary:\nTable A9MA activated\nTable generator started\nTable A9MB has been saved\nMessage from the Data Dictionary:\nTable A9MB activated\nTable generator started\nTable A9MC has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9MD has been saved\nMessage from the Data Dictionary:\nTable A9MD activated\nTable generator started\nTable A9ME has been saved\nMessage from the Data Dictionary:\nTable A9ME activated\nTable generator started\nTable A9MF has been saved\nMessage from the Data Dictionary:\nTable A9MF activated\nTable generator started\nTable A9MG has been saved\nMessage from the Data Dictionary:\nTable A9MG activated\nTable generator started\nTable A9MH has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9MI has been saved\nMessage from the Data Dictionary:\nTable A9MI activated\nTable generator started\nTable A9MJ has been saved\nMessage from the Data Dictionary:\nTable A9MJ activated\nTable generator started\nTable A9MK has been saved\nMessage from the Data Dictionary:\nTable A9MK activated\nTable generator started\nTable A9ML has been saved\nMessage from the Data Dictionary:\nTable A9ML activated\nTable generator started\nTable A9MM has been saved\nMessage from the Data Dictionary:\nTable A9MM activated\nTable generator started\nTable A9MN has been saved\nMessage from the Data Dictionary:\nTable A9MN activated\nTable generator started\nTable A9MO has been saved\nMessage from the Data Dictionary:\nTable A9MO activated\nTable generator started\nTable A9MP has been saved\nMessage from the Data Dictionary:\nTable A9MP activated\nTable generator started\nTable A9MQ has been saved\nMessage from the Data Dictionary:\nTable A9MQ activated\nTable generator started\nTable A9MR has been saved\nMessage from the Data Dictionary:\nTable A9MR activated\nTable generator started\nTable A9MS has been saved\nMessage from the Data Dictionary:\nTable A9MS activated\nTable generator started\nTable A9MT has been saved\nMessage from the Data Dictionary:\nTable A9MT activated\nTable generator started\nTable A9MU has been saved\nMessage from the Data Dictionary:\nTable A9MU activated\nTable generator started\nTable A9MV has been saved\nMessage from the Data Dictionary:\nTable A9MV activated\nTable generator started\nTable A9NA has been saved\nMessage from the Data Dictionary:\nTable A9NA activated\nTable generator started\nTable A9NB has been saved\nMessage from the Data Dictionary:\nTable A9NB activated\nTable generator started\nTable A9NC has been saved\nMessage from the Data Dictionary:\nTable A9NC activated\nTable generator started\nTable A9ND has been saved\nMessage from the Data Dictionary:\nTable A9ND activated\nTable generator started\nTable A9NE has been saved\nMessage from the Data Dictionary:\nTable A9NE activated\nTable generator started\nTable A9NF has been saved\nMessage from the Data Dictionary:\nTable A9NF activated\nTable generator started\nTable A9NG has been saved\nMessage from the Data Dictionary:\nTable A9NG activated\nTable generator started\nTable A9NH has been saved\nMessage from the Data Dictionary:\nTable A9NH activated\nTable generator started\nTable A9NI has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NJ has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NK has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NL has been saved\nMessage from the Data Dictionary:\nTable A9NL activated\nTable generator started\nTable A9NM has been saved\nMessage from the Data Dictionary:\nTable A9NM activated\nTable generator started\nTable A9NN has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NO has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NP has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NQ has been saved\nMessage from the Data Dictionary:\nTable A9NQ activated\nTable generator started\nTable A9NR has been saved\nMessage from the Data Dictionary:\nTable A9NR activated\nTable generator started\nTable A9NS has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NT has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NU has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9NV has been saved\nMessage from the Data Dictionary:\nTable A9NV activated\nTable generator started\nTable A9OA has been saved\nMessage from the Data Dictionary:\nTable A9OA activated\nTable generator started\nTable A9OB has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9OC has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9OD has been saved\nMessage from the Data Dictionary:\nActivation was interrupted\nTable generator started\nTable A9OE has been saved\nMessage from the Data Dictionary:\nTable A9OE activated\nTable generator started\nTable A9OF has been saved\nMessage from the Data Dictionary:\nTable A9OF activated\nTable generator started\nTable A9OG has been saved\nMessage from the Data Dictionary:\nTable A9OG activated\nTable generator started\nTable A9OH has been saved\nMessage from the Data Dictionary:\nTable A9OH activated\nTable generator started\nTable A9OI has been saved\nMessage from the Data Dictionary:\nTable A9OI activated\nTable generator started\nTable A9OJ has been saved\nMessage from the Data Dictionary:\nTable A9OJ activated\nTable generator started\nTable A9OK has been saved\nMessage from the Data Dictionary:\nTable A9OK activated\nTable generator started\nTable A9OL has been saved\nMessage from the Data Dictionary:\nTable A9OL activated\nTable generator started\nTable A9OM has been saved\nMessage from the Data Dictionary:\nTable A9OM activated\nTable generator started\nTable A9ON has been saved\nMessage from the Data Dictionary:\nTable A9ON activated\nTable generator started\nTable A9OO has been saved\nMessage from the Data Dictionary:\nTable A9OO activated\nTable generator started\nTable A9OP has been saved\nMessage from the Data Dictionary:\nTable A9OP activated\nErrors occurred during post-handling RV_COND_TABLE_GEN_ACT_METHOD for VKOS L\nRV_COND_TABLE_GEN_ACT_METHOD belongs to package VKON\nThe errors affect the following components:\nSD-MD-CM (Conditions)\nPost-import method RV_COND_TABLE_GEN_ACT_METHOD completed for VKOS L, date and time: 20261003125841\nPost-import methods of change/transport request DS4K904917 completed\nStart of subsequent processing ... 20261003125630\nEnd of subsequent processing... 20261003125841\n\nExecute reports for change/transport request: DS4K904917\n\nNo XCLA conversions exist for execution\nXCLAs for change request/transport request DS4K904917 were executed\n\nThere are no XPRA reports to execute\n\nReports for change/transport request DS4K904917 have been executed\nStart of................ 20261003125841\nEnd of.................. 20261003125841\nExecution of programs after import (XPRA)\nEnd date and time : 20261003125841\nEnded with return code:  ===> 8 <===\n######################################";
 const SAMPLE_ACT = "U30695020261003131953\n\n\nI1 I2 I3 ED Log Text\n\n=========================================================================\nActivation of worklist (U306950 / 03.10.2026 / 13:19:54 /)\n=========================================================================\n\nTechnical log for mass activation\nSee log U30695020261003131953:ACT\n\nTABL A9HU was not activated\nCheck table A9HU (U306950/03.10.26/13:19)\nTable A9HU has more than 16 key fields\nField name MANDT can be passed to this system; do not use it\nField name KAPPL can be passed to this system; do not use it\nField name KSCHL can be passed to this system; do not use it\nField name COCO_NUM can be passed to this system; do not use it\nField name ZZ1_ADJNO_PCI can already exist in a subsequent system\nField name ZZ1_ORDSUFFIX_PCI can already exist in a subsequent system\nField name ZZ1_STOCK_BLD_BY_DTE_PCI can already exist in a subsequent system\nField name ZZ1_STOCK_BLD_AFTR_DTE_PCI can already exist in a subsequent system\nField name PRODH3 can be passed to this system; do not use it\nField name LAND1 can be passed to this system; do not use it\nField name BZIRK can be passed to this system; do not use it\nField name KVGR3 can be passed to this system; do not use it\nField name ZZ1_FETR_CD_2_PCI can already exist in a subsequent system\nField name ZZ1_FETR_CD_3_PCI can already exist in a subsequent system\nField name ZZ1_FETR_CD_4_PCI can already exist in a subsequent system\nField name KFRST can be passed to this system; do not use it\nField name DATBI can be passed to this system; do not use it\nField name DATAB can be passed to this system; do not use it\nField name KBSTAT can be passed to this system; do not use it\nField name KNUMH can be passed to this system; do not use it\nIndex A9HU-SCT is not in the customer namespace\nTable A9HU must be created in the database\nCheck on table A9HU resulted in errors\n\n=========================================================================\nEnd of activation of worklist\n=========================================================================";
 const SAMPLE_SYN = "Log File                 /usr/sap/trans/log/DS4G905102.QS4\nI1 I2 I3 ED Log Text\n######################################\nGeneration of programs and screens\nTransport request   : DS4K905102\nSystem              : QS4\ntp path             : tp\nVersion and release: 381.588.09 793\n######################################\nProgram ZSD_OTC_PRICING_EXIT, Include ZSD_OTC_PRICING_EXIT_F01: Syntax error in line 000214\nThe type \"ZTT_OTC_SURCHARGE\" is unknown.\nEnhancement implementation ZEI_SD_PRICING could not be switched on: switch ZSW_OTC_PRICING not assigned to package ZSD_OTC\nClass ZCL_OTC_PRICE_HELPER generated\nErrors occurred during generation\nEnded with return code:  ===> 8 <===\n######################################\n";
+const SAMPLE_CTMS = "Action ID: 14,576\nType: I\nNode: IntegrationSuite-QA\nUser: user@example.com\nDisplay user: user@example.com\nStart time: 9/29/26, 9:44\u202fPM\nEnd time: 9/29/26, 9:44\u202fPM\nOverall Action Status: 8\nMessages:\nID\tCreated At\tHash\tMessage ID\tMessage\tSeverity\n- Transport Request \"CPACIntegrationWithSAPS4HANA - SIT2_DF-1654_OTC_I121_Mapping Changes for Division\"; ID: 14,547; Status: 8\n14580\t2026-09-29 21:44:43.032\t497EDCAF088B6CCC0904F2EA6E488ED80E6DE0532F594DCADC47FACD812850B5\tTRANSPORT_REQUEST_FORWARDED\tTransport request 'CPACIntegrationWithSAPS4HANA - SIT2_DF-1654_OTC_I121_Mapping Changes for Division' (id: 14547) forwarded to node 'IntegrationSuite-PREPROD' (id: 14, queue entry id: 14579, action id: 14576)\tI\n14582\t2026-09-29 21:44:43.056\tC20EEB21280033D4D9C8BD295798B2C7F2CA121E3293C4B7564FB0B9BC79F765\tCONTENT_REF_FORWARDED\tContent CPACIntegrationWithSAPS4HANA.mtar forwarded to node IntegrationSuite-PREPROD as part of the transport request 'CPACIntegrationWithSAPS4HANA - SIT2_DF-1654_OTC_I121_Mapping Changes for Division' (id: 14547)\tI\n14587\t2026-09-29 21:44:43.126\t508A4696980502389579B0F9F2F0714E3F693E22A08A0976FA444027E139C379\tTRANSPORTREQUEST_START\tImport (selected) started for transport request 'CPACIntegrationWithSAPS4HANA - SIT2_DF-1654_OTC_I121_Mapping Changes for Division' (id: 14547), at Sep-29-2026 21:44:43 GMT (action id: 14,576)\tI\n14588\t2026-09-29 21:44:43.38\tC9C32AD5630D4170AA99F9112F83B355CA0AD560818CE5CC6F1A6927D3798A38\tDESTINATION_DETAILS\tDestination details for node 'IntegrationSuite-QA' (id: 11), content type 'Multi-Target Application' ('MTA'): URI='https://content-agent-engine.cfapps.us10.hana.ondemand.com' (name: 'IntegrationSuite-QA')\tI\n14589\t2026-09-29 21:44:43.394\t1E98D3E97095D5FEEB8584BEA6CD2DC4108DB7A635267EDED5DD5E94274A8F70\tDEPLOY_MODE_CAS\tDeployment via Content Agent Service\tI\n14590\t2026-09-29 21:44:43.404\t2AF10069312BF8DD8E2F72B0E9464B793CE9B5348E2EE8EE121BDC00F9559574\tENTITY_TO_DEPLOY\tEntity to deploy: '14541 - CPACIntegrationWithSAPS4HANA.mtar' (id: 14550), of content type 'Multi-Target Application' ('MTA') and storage type 'FILE'\tI\n14592\t2026-09-29 21:44:44.539\tD1AABDB740EE4C8BABBAE35AB38B25AE1A6746CBE08D759F47921123011147C3\tDEPLOYMENT_STARTED\tDeployment started. Process id: e6564a80-75fc-450d-9a0e-c977c914a5d6\tI\n14593\t2026-09-29 21:44:44.476\tA83E4FBE3792E4CBC058C1957833038C6FA5EAD250DC9874F40656340DD9BB76\t \tDeployment has initialized for content 175acc62-d461-4590-9969-6339f6fa420f\tI\n14594\t2026-09-29 21:44:45.912\t974F4FC5A64717DE1277415467C748F0915344DBC1440319A6C7FCBEB3C1101A\t \tProcess is aborted/skipped due to deployment failure for module CPACIntegrationWithSAPS4HANA.\tW\n14595\t2026-09-29 21:44:45.906\t42E6F419E794F6AC50BA3B0AC887D7FF1F44A13C8DB52E55D9D73682EA3E5512\t \tDeployment has failed for module CPACIntegrationWithSAPS4HANA in process with id 175acc62-d461-4590-9969-6339f6fa420f\tE\n14596\t2026-09-29 21:44:45.899\tD84FBCF6C262A3FC81C14E0DB935E3B39EAA4950E5307AF7E7FE353835DC93B1\t \tError while deploying CPACIntegrationWithSAPS4HANA module. {\"errorMessage\":\"com.sap.it.spc.ondemand.storage.exception.UniquenessViolationException: \"}\tE\n14597\t2026-09-29 21:44:45.565\t07242DE02E44F0854583D77E25DF08399BFF3AF6700CEDC4A6C67DAE19EF7D31\t \tFile is uploaded and Deployment has started for module CPACIntegrationWithSAPS4HANA\tI\n14598\t2026-09-29 21:44:50.365\t4B315F0F20F8492C97DD88C62DA7712856BD69B0E2E683E4B364B6E7BE224E3B\t \tRemote server skipped deployment of entity with remote ID 175acc62-d461-4590-9969-6339f6fa420f\tI\n14599\t2026-09-29 21:44:50.435\t8E55779A2F609BC5C9DB97E2859705C831DBC4A641754CF8B7AA4E676D031D07\tENTITY_RC_ADJUSTED\tThe return code of entity '14541 - CPACIntegrationWithSAPS4HANA.mtar' (id: 14550) was adjusted to 'error' (former value: 'skipped')\tI\n14600\t2026-09-29 21:44:50.463\tA628C81AD682EB6109CCE1FDD38F635F9A943646B58F9917140FAE40158CE753\tTRANSPORTREQUEST_RC_ADJUSTED\tThe return code of the transport request was adjusted to 'error' (former value: 'skipped')\tI\n14601\t2026-09-29 21:44:50.474\t495AECE96AC6C1C053B530F2DB7B35CDE5E910893CCA773BD124F05268961403\tTRANSPORTREQUEST_END\tImport ended for transport request 'CPACIntegrationWithSAPS4HANA - SIT2_DF-1654_OTC_I121_Mapping Changes for Division' (id: 14547) with status 'Error', at Sep-29-2026 21:44:50 GMT\tI\n";
 
 
 /* =====================================================================
-   Built-in rule library (read-only). The team's approved rules live in
-   the shared knowledge base and are checked first.
+   Shared helpers
    ===================================================================== */
-const CATS = ["Dictionary (DDIC)","CDS and views","Main import","Generation","Methods and XPRA","Locks","Namespace and changeability","Component versions","tp, OS and database","Symptom","Noise"];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const toLines = t => t.replace(/\r/g,"").split("\n").map(l=>l.replace(/[ \t\u00a0]+/g," ").trim());
+function hash(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+const fmtDate = iso => { try { return new Date(iso).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); } catch { return iso; } };
+const SEVS = ["error","warning","info","symptom","noise"];
+const R = (id,cat,sev,re,title,cause,fix,tx=[],verify="") => ({id,cat,sev,re,title,cause,fix,tx,verify,source:"builtin"});
+
+const EXC_RE = /(?:[a-z_][\w$]*\.)+([A-Z][\w$]*(?:Exception|Error))\b/g;
+function signature(line){
+  return line
+    .replace(/"[^"]*"|'[^']*'/g, m => { const x = [...m.matchAll(EXC_RE)][0]; return x ? `<QX:${x[1]}>` : m; })
+    .replace(EXC_RE, (m, c) => `<EXC:${c}>`)
+    .replace(/\b[A-Z0-9]{3}K\d{6}\b/g,"<TR>")
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,"<GUID>")
+    .replace(/https?:\/\/\S+/g,"<URL>")
+    .replace(/\b\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/g,"<DATE>")
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g,"<TIME>")
+    .replace(/"[^"]*"|'[^']*'/g,"<Q>")
+    .replace(/\b(Table|Program|Include|Class|Interface|Field|Object|View|Domain|Data element|Function module|Function group|Method|Report|Index|Structure|Search help|DDL source|Entity|Package|Switch|Enhancement implementation|Client|Request|user|module|node|artifact|iFlow|integration flow|app|application|service|route|space|org)\s+(?!<)([\w\/.$-]+)/gi,"$1 <OBJ>")
+    .replace(/(^|[\s(=:,])\/[A-Z0-9_]+\/[A-Z0-9_\/-]*/g,"$1<OBJ>")
+    .replace(/\b(?=[A-Z0-9_]*[0-9_])[A-Z][A-Z0-9_]{2,}\b/g,"<OBJ>")
+    .replace(/\b[ZY][A-Z0-9_]{2,}\b/g,"<OBJ>")
+    .replace(/\bdeploying (?!<)(\S+) module\b/gi,"deploying <OBJ> module")
+    .replace(/(?<![:<\w])(?=[A-Za-z_]*\d)[A-Za-z][\w-]*\d[\w-]*\b/g,"<OBJ>")
+    .replace(/\b\d[\d,]*\b/g,"<N>");
+}
+function patternFromSignature(sig){
+  let first = true;
+  return sig.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")
+    .replace(/<OBJ>/g, ()=>{ if (first){ first=false; return "([\\w\\/.$-]+)"; } return "[\\w\\/.$-]+"; })
+    .replace(/<TR>/g,"[A-Z0-9]{3}K\\d{6}").replace(/<GUID>/g,"[0-9a-f-]{36}").replace(/<URL>/g,"\\S+")
+    .replace(/<DATE>/g,"[\\d.\\/-]+").replace(/<TIME>/g,"[\\d:]+")
+    .replace(/<Q>/g,"(?:\"[^\"]*\"|'[^']*')")
+    .replace(/<QX:([\w$]+)>/g,(m,c)=>`(?:"[^"]*${c}[^"]*"|'[^']*${c}[^']*')`).replace(/<EXC:([\w$]+)>/g,(m,c)=>`(?:[\\w$]+\\.)*${c}`).replace(/<N>/g,"\\d[\\d,]*").replace(/ /g,"\\s+");
+}
+
+/* =====================================================================
+   S/4HANA (ABAP) rule library
+   ===================================================================== */
+const CATS_ABAP = ["Dictionary (DDIC)","CDS and views","Main import","Generation","Methods and XPRA","Locks","Namespace and changeability","Component versions","tp, OS and database","Symptom","Noise"];
 const STEPS = {E:"Main export",P:"Test import",H:"Dictionary import",A:"Dictionary activation",S:"Distribution of dictionary objects",N:"Conversion",M:"Enqueue object activation",I:"Main import",V:"Version flag",R:"Methods and XPRA",G:"Generation of programs and screens",X:"Export of application objects","SE11":"Activation log (SE11)","?":"Unknown step"};
 const NEXT_LOOK = {
   H:"Check the dictionary import log for objects that weren't written, and the A (activation) log of the same request.",
@@ -186,95 +213,49 @@ const NEXT_LOOK = {
   "SE11":"The lines above come straight from the dictionary check; the error lines are the cause.",
   "?":"Check the ALOG/SLOG in /usr/sap/trans/log for tp-level errors, and run R3trans -d as <sid>adm."
 };
-const B = (id,cat,sev,re,title,cause,fix,tx=[]) => ({id,cat,sev,re,title,cause,fix,tx,source:"builtin"});
-const BUILTIN = [
- // Dictionary
- B("KEY16","Dictionary (DDIC)","error",/Table (\S+) has more than 16 key fields/i,"More than 16 key fields",
+const BUILTIN_ABAP = [
+ R("KEY16","Dictionary (DDIC)","error",/Table (\S+) has more than 16 key fields/i,"More than 16 key fields",
    "The ABAP Dictionary allows at most 16 key fields, so the table can't be activated or created in the database in any system. Condition tables always use 5 of them (MANDT, KAPPL, KSCHL, KFRST, DATBI), leaving 11 for chosen fields.",
    ["Fix it in the development system; re-importing won't help.","Redesign with fewer key fields (for condition tables: 11 or fewer variable fields). Split the criteria across two access steps or derive a combined field.","For condition tables: point the access sequences (V/07) to the new table, then delete the old one in the development system and transport the change after the original request.","Re-import in the target, then run RV80HGEN there."],["SE11","V/03","V/07","RV80HGEN"]),
- B("KEYLEN","Dictionary (DDIC)","error",/key (?:length|is too long)|total length of (?:the )?key/i,"Key too long",
-   "The combined length of the key fields is above the database limit.",["Shorten or remove key fields in the development system.","Transport the corrected definition and re-import."],["SE11"]),
- B("DEPFLD","Dictionary (DDIC)","error",/Field (\S+?):? .*Component type or domain used not active or does not exist/i,"Field type missing in target",
-   "A field refers to a data element or domain that isn't active in this system. The request that carries it hasn't been imported, or was imported later.",["Find the request with the missing type in the development system (SE03 → Search for Objects in Requests).","Import it into the target first, then re-import this request."],["SE03","STMS"]),
- B("DEPDTEL","Dictionary (DDIC)","error",/(?:Data element|Domain) (\S+) (?:is not active|does not exist)/i,"Data element or domain missing",
-   "A dictionary type this object depends on isn't active in the target.",["Locate the request that contains it (SE03).","Import it first, then re-import this request."],["SE03","SE11"]),
- B("TECHSET","Dictionary (DDIC)","error",/technical settings.*(?:missing|not (?:maintained|active|exist))|size category .*not|data class (\S+) .*not/i,"Technical settings missing",
-   "The table's technical settings weren't transported or aren't active.",["Check SE13 in the development system and include the technical settings in the request.","Re-import."],["SE13"]),
- B("CONVERT","Dictionary (DDIC)","warning",/(?:must be|will be|is to be) converted|table conversion|conversion (?:of|for) (?:table )?(\S+)/i,"Database conversion needed",
-   "The table exists in the target with a different structure and must be converted.",["Check the table in SE14 and the conversion log.","Make sure no manual or partial version exists in the target; then re-import."],["SE14"]),
- B("DBCREATE","Dictionary (DDIC)","info",/Table (\S+) must be created in the database/i,"Table not yet in database",
-   "The table doesn't exist in this database yet, so this isn't a conversion problem. It's created once activation succeeds.",[]),
- B("NOTEXIST","Dictionary (DDIC)","error",/(?:Table|Structure|View|Append|Search help|Lock object|Type group) (\S+) does not exist/i,"Referenced object missing",
-   "Something this object depends on hasn't reached the target system yet.",["Check the import order: find the request containing the missing object and import it first.","Re-import this request."],["SE03","STMS"]),
- // CDS
- B("CDSACT","CDS and views","error",/(?:DDL source|DDLS|CDS view|CDS entity|data definition) (\S+).*(?:could not be activated|not activated|has errors|activation error)/i,"CDS view not activated",
-   "A CDS data definition failed activation, usually because a data source, association target or annotation reference doesn't exist yet in the target.",["Open the DDL source in ADT (or SE11 → activation log) in the target to see the failing reference.","Import the request with the referenced view, table or field first; then re-import."],["ADT","SE11"]),
- B("CDSDEP","CDS and views","error",/(?:association|data source|entity|view) (\S+) (?:does not exist|is not active|is unknown)/i,"CDS dependency missing",
-   "A CDS view refers to an entity that isn't active in the target.",["Import the missing entity's request first.","Re-import."],["ADT"]),
- // Main import
- B("DUPKEY","Main import","error",/duplicate key|DUPREC|unique constraint/i,"Duplicate key on import",
-   "Table entries in the request collide with existing entries in the target.",["Compare the entries with the target (SCU0 or SCMP).","Agree with the change owner which version wins; re-import with the right options."],["SCU0","SCMP"]),
- B("ORIGNR","Main import","error",/original object(?: (\S+))?.*not (?:been )?(?:replaced|overwritten)/i,"Original object not replaced",
-   "The target holds its own original of the object (for example it was created or repaired there), so the import didn't overwrite it.",["Check the object directory entry and original system (SE03 / TADIR) in the target.","Decide whether the target version may be overwritten; if so re-import with 'Overwrite originals'."],["SE03","STMS"]),
- B("REPAIR","Main import","error",/repair(?:ed)? .*(?:not|cannot) be (?:overwritten|imported)|object (\S+) .*repaired/i,"Repaired object in target",
-   "The object was repaired in the target and is protected from being overwritten.",["Confirm the repair (SE03) and whether it's still needed.","Release the repair flag or re-import with the right options."],["SE03"]),
- B("CLIENT","Main import","error",/client (\d{3}) (?:does not exist|is locked|is not (?:open|allowed|modifiable|changeable))/i,"Target client problem",
-   "Client-specific content couldn't be imported into the target client.",["Check that the target client exists and its settings (SCC4).","Re-import into the correct client (STMS → Target client)."],["SCC4","STMS"]),
- B("NAMETAB","Main import","error",/nametab.*(?:not found|does not exist|inconsistent|missing|error)/i,"Runtime object (nametab) missing",
-   "The table's runtime object isn't there or doesn't match, so entries couldn't be written.",["Make sure the dictionary request for the table is imported and activated first (SE11 / SE14).","Re-import this request."],["SE11","SE14"]),
- B("DBTAB","Main import","error",/(?:database )?table (\S+) (?:does not exist in the database|not found in (?:the )?database)/i,"Table missing in database",
-   "The table exists in the dictionary but not in the database of the target.",["Check in SE14 and create or adjust the database object.","Re-import."],["SE14"]),
- // Generation
- B("SYNTAX","Generation","error",/(?:Program|Include|Class|Function group) (\S+?)[,:]? .*Syntax error/i,"Syntax error during generation",
-   "The object doesn't compile in the target, nearly always because something it uses (type, class, include, field) is missing or older there.",["Open the object in SE80 in the target and run the syntax check; the message names the missing piece.","Import the request that contains it first (SE03 search), then re-import.","Optionally regenerate with SGEN after the fix."],["SE80","SE03","SGEN"]),
- B("UNKNOWNTYPE","Generation","error",/(?:type|field|class|interface|method|data object|function module|include) "?([\w\/]+)"? (?:is unknown|does not exist|is not defined)/i,"Referenced type or class unknown",
-   "Code refers to a type, class or field that doesn't exist in the target yet.",["Find the request that creates it in the development system (SE03).","Import it first, then re-import this request."],["SE03","SE80"]),
- B("GENERR","Symptom","symptom",/errors? (?:occurred )?during generation|generation errors|could not be generated|not generated/i,"Generation failed (symptom)",
-   "Summary line; the cause is on the error lines for the same objects.",[]),
- // Methods / XPRA
- B("DUMP","Methods and XPRA","error",/(?:runtime error|short dump|ABAP dump|ST22)\b[\s:]*'?([A-Z][A-Z_]{4,})?/i,"Runtime error during import",
-   "An after-import method or XPRA dumped.",["Find the dump in ST22 at the import time (user DDIC or the tp user).","Fix the cause it names (often missing customizing or a prerequisite request) and re-import."],["ST22"]),
- B("XPRAERR","Methods and XPRA","error",/XPRA\b.*(?:terminated|cancel|error|failed)|(?:terminated|cancelled) .*XPRA/i,"XPRA failed",
-   "An XPRA report ended with errors.",["Read the XPRA's own log (SE01 → request → logs, or the report's application log in SLG1).","Fix and re-run the XPRA or re-import."],["SE01","SLG1"]),
- B("POSTERR","Methods and XPRA","error",/Errors occurred during post-handling (\S+)/i,"After-import method failed",
-   "The after-import method reported errors. The objects it lists are the ones to diagnose.",["Look at the object-level messages around this line, or the SE11 activation log of each failed object."],["SE11"]),
- // Locks
- B("LOCK","Locks","warning",/locked by(?: user)? (\S+)|enqueue (?:error|failure|conflict)|lock table overflow/i,"Object locked during import",
-   "Someone (or another import) held a lock on the object.",["Check and release locks in SM12.","Re-import."],["SM12"]),
- // Namespace
- B("NSMOD","Namespace and changeability","error",/namespace (\S+) .*not (?:modifiable|changeable)|(?:not modifiable|cannot be changed).*(?:namespace|software component)/i,"Namespace not changeable",
-   "The system's change settings don't allow this namespace or software component to be changed.",["Check SE06 (system change option) and SCC4 in the target.","Adjust only per your change policy, then re-import."],["SE06","SCC4"]),
- // Component versions
- B("COMPVER","Component versions","error",/component version|software component .*(?:differ|mismatch|not identical)|SAP_BASIS .*(?:differ|mismatch)/i,"Component version mismatch",
-   "Source and target are on different support package levels for a component in the request.",["Compare levels in SPAM / System → Status in both systems.","Align them, or import with 'ignore invalid component version' only after review."],["SPAM","STMS"]),
- // tp / OS / DB
- B("DBCONN","tp, OS and database","error",/connect(?:ion)? to (?:the )?database failed|could not connect|DB-?connect|database connect(?:ion)? (?:error|failed)/i,"No database connection",
-   "tp/R3trans couldn't log on to the database.",["Run R3trans -d as <sid>adm and read trans.log.","On HANA check hdbuserstore (DEFAULT key) and the client version."],["R3trans -d"]),
- B("FILE","tp, OS and database","error",/permission denied|cannot open|could not open|no such file|file not found|cannot (?:read|write)/i,"File or permission problem",
-   "tp couldn't read or write a file in the transport directory (data file, cofile or log).",["Check that the data and cofile exist in /usr/sap/trans and the permissions for <sid>adm.","Check the mount of /usr/sap/trans on the target host."],["AL11","OS"]),
- B("DISK","tp, OS and database","error",/no space left|disk full|file ?system full|tablespace .*full|log (?:area|volume) full/i,"Storage full",
-   "The file system or database ran out of space during the import.",["Free or extend the affected file system or database volume.","Re-import."],["DB02","OS"]),
- B("DBERR","tp, OS and database","error",/SQL (?:code|error)\s*:?\s*-?\d+|SQLSTATE|HANA error|ORA-\d+|dbsl/i,"Database error",
-   "The database rejected a statement during the import.",["Read the full SQL error text in the log and in ST22/SM21.","Check database traces; fix and re-import."],["ST22","SM21","DBACOCKPIT"]),
- B("KILLED","tp, OS and database","error",/signal\s*\d+|killed|core dumped/i,"Import process killed",
-   "The tp or R3trans process was stopped by the OS or an operator.",["Check SM21 and OS logs for the time of the import.","Re-run the import once the cause is cleared."],["SM21"]),
- // Symptoms
- B("INTERRUPT","Symptom","symptom",/Activation was interrupted/i,"Activation interrupted (symptom)",
-   "Generic message. The reason is in the SE11 activation log of the object.",[]),
- B("NOTACT","Symptom","symptom",/(?:TABL|Table|VIEW|DTEL|DOMA|DDLS) (\S+) was not activated/i,"Not activated (symptom)",
-   "Summary line; the cause is on the other error lines for the object.",[]),
- B("CHECKERR","Symptom","symptom",/Check on (?:table|view) (\S+) resulted in errors/i,"Check failed (symptom)",
-   "Summary from the dictionary check; the error lines above it are the cause.",[]),
- B("NOTIMP","Symptom","symptom",/(?:were|was) not imported|not imported/i,"Not imported (symptom)",
-   "Summary line; look for the cause next to it.",[]),
- // Noise
- B("NS_SAP","Noise","noise",/Field name (\S+) can be passed to this system; do not use it/i,"SAP field name in customer table","Expected for generated tables. Safe to ignore.",[]),
- B("NS_CUST","Noise","noise",/Field name (\S+) can already exist in a subsequent system/i,"Customer field name warning","Standard namespace warning for ZZ/ZZ1_ fields. Safe to ignore.",[]),
- B("NS_INDEX","Noise","noise",/Index (\S+) is not in the customer namespace/i,"SAP index name on generated table","Safe to ignore.",[]),
- B("ENHCAT","Noise","noise",/enhancement category/i,"Enhancement category warning","Classification warning; doesn't block activation.",[])
+ R("KEYLEN","Dictionary (DDIC)","error",/key (?:length|is too long)|total length of (?:the )?key/i,"Key too long","The combined length of the key fields is above the database limit.",["Shorten or remove key fields in the development system.","Transport the corrected definition and re-import."],["SE11"]),
+ R("DEPFLD","Dictionary (DDIC)","error",/Field (\S+?):? .*Component type or domain used not active or does not exist/i,"Field type missing in target","A field refers to a data element or domain that isn't active in this system. The request that carries it hasn't been imported, or was imported later.",["Find the request with the missing type in the development system (SE03 → Search for Objects in Requests).","Import it into the target first, then re-import this request."],["SE03","STMS"]),
+ R("DEPDTEL","Dictionary (DDIC)","error",/(?:Data element|Domain) (\S+) (?:is not active|does not exist)/i,"Data element or domain missing","A dictionary type this object depends on isn't active in the target.",["Locate the request that contains it (SE03).","Import it first, then re-import this request."],["SE03","SE11"]),
+ R("TECHSET","Dictionary (DDIC)","error",/technical settings.*(?:missing|not (?:maintained|active|exist))|size category .*not|data class (\S+) .*not/i,"Technical settings missing","The table's technical settings weren't transported or aren't active.",["Check SE13 in the development system and include the technical settings in the request.","Re-import."],["SE13"]),
+ R("CONVERT","Dictionary (DDIC)","warning",/(?:must be|will be|is to be) converted|table conversion|conversion (?:of|for) (?:table )?(\S+)/i,"Database conversion needed","The table exists in the target with a different structure and must be converted.",["Check the table in SE14 and the conversion log.","Make sure no manual or partial version exists in the target; then re-import."],["SE14"]),
+ R("DBCREATE","Dictionary (DDIC)","info",/Table (\S+) must be created in the database/i,"Table not yet in database","The table doesn't exist in this database yet, so this isn't a conversion problem. It's created once activation succeeds.",[]),
+ R("NOTEXIST","Dictionary (DDIC)","error",/(?:Table|Structure|View|Append|Search help|Lock object|Type group) (\S+) does not exist/i,"Referenced object missing","Something this object depends on hasn't reached the target system yet.",["Check the import order: find the request containing the missing object and import it first.","Re-import this request."],["SE03","STMS"]),
+ R("CDSACT","CDS and views","error",/(?:DDL source|DDLS|CDS view|CDS entity|data definition) (\S+).*(?:could not be activated|not activated|has errors|activation error)/i,"CDS view not activated","A CDS data definition failed activation, usually because a data source, association target or annotation reference doesn't exist yet in the target.",["Open the DDL source in ADT (or SE11 → activation log) in the target to see the failing reference.","Import the request with the referenced view, table or field first; then re-import."],["ADT","SE11"]),
+ R("CDSDEP","CDS and views","error",/(?:association|data source|entity|view) (\S+) (?:does not exist|is not active|is unknown)/i,"CDS dependency missing","A CDS view refers to an entity that isn't active in the target.",["Import the missing entity's request first.","Re-import."],["ADT"]),
+ R("DUPKEY","Main import","error",/duplicate key|DUPREC|unique constraint/i,"Duplicate key on import","Table entries in the request collide with existing entries in the target.",["Compare the entries with the target (SCU0 or SCMP).","Agree with the change owner which version wins; re-import with the right options."],["SCU0","SCMP"]),
+ R("ORIGNR","Main import","error",/original object(?: (\S+))?.*not (?:been )?(?:replaced|overwritten)/i,"Original object not replaced","The target holds its own original of the object (for example it was created or repaired there), so the import didn't overwrite it.",["Check the object directory entry and original system (SE03 / TADIR) in the target.","Decide whether the target version may be overwritten; if so re-import with 'Overwrite originals'."],["SE03","STMS"]),
+ R("REPAIR","Main import","error",/repair(?:ed)? .*(?:not|cannot) be (?:overwritten|imported)|object (\S+) .*repaired/i,"Repaired object in target","The object was repaired in the target and is protected from being overwritten.",["Confirm the repair (SE03) and whether it's still needed.","Release the repair flag or re-import with the right options."],["SE03"]),
+ R("CLIENT","Main import","error",/client (\d{3}) (?:does not exist|is locked|is not (?:open|allowed|modifiable|changeable))/i,"Target client problem","Client-specific content couldn't be imported into the target client.",["Check that the target client exists and its settings (SCC4).","Re-import into the correct client (STMS → Target client)."],["SCC4","STMS"]),
+ R("NAMETAB","Main import","error",/nametab.*(?:not found|does not exist|inconsistent|missing|error)/i,"Runtime object (nametab) missing","The table's runtime object isn't there or doesn't match, so entries couldn't be written.",["Make sure the dictionary request for the table is imported and activated first (SE11 / SE14).","Re-import this request."],["SE11","SE14"]),
+ R("DBTAB","Main import","error",/(?:database )?table (\S+) (?:does not exist in the database|not found in (?:the )?database)/i,"Table missing in database","The table exists in the dictionary but not in the database of the target.",["Check in SE14 and create or adjust the database object.","Re-import."],["SE14"]),
+ R("SYNTAX","Generation","error",/(?:Program|Include|Class|Function group) (\S+?)[,:]? .*Syntax error/i,"Syntax error during generation","The object doesn't compile in the target, nearly always because something it uses (type, class, include, field) is missing or older there.",["Open the object in SE80 in the target and run the syntax check; the message names the missing piece.","Import the request that contains it first (SE03 search), then re-import.","Optionally regenerate with SGEN after the fix."],["SE80","SE03","SGEN"]),
+ R("UNKNOWNTYPE","Generation","error",/(?:type|field|class|interface|method|data object|function module|include) "?([\w\/]+)"? (?:is unknown|does not exist|is not defined)/i,"Referenced type or class unknown","Code refers to a type, class or field that doesn't exist in the target yet.",["Find the request that creates it in the development system (SE03).","Import it first, then re-import this request."],["SE03","SE80"]),
+ R("GENERR","Symptom","symptom",/errors? (?:occurred )?during generation|generation errors|could not be generated|not generated/i,"Generation failed (symptom)","Summary line; the cause is on the error lines for the same objects.",[]),
+ R("DUMP","Methods and XPRA","error",/(?:runtime error|short dump|ABAP dump|ST22)\b[\s:]*'?([A-Z][A-Z_]{4,})?/i,"Runtime error during import","An after-import method or XPRA dumped.",["Find the dump in ST22 at the import time (user DDIC or the tp user).","Fix the cause it names (often missing customizing or a prerequisite request) and re-import."],["ST22"]),
+ R("XPRAERR","Methods and XPRA","error",/XPRA\b.*(?:terminated|cancel|error|failed)|(?:terminated|cancelled) .*XPRA/i,"XPRA failed","An XPRA report ended with errors.",["Read the XPRA's own log (SE01 → request → logs, or the report's application log in SLG1).","Fix and re-run the XPRA or re-import."],["SE01","SLG1"]),
+ R("POSTERR","Methods and XPRA","error",/Errors occurred during post-handling (\S+)/i,"After-import method failed","The after-import method reported errors. The objects it lists are the ones to diagnose.",["Look at the object-level messages around this line, or the SE11 activation log of each failed object."],["SE11"]),
+ R("LOCK","Locks","warning",/locked by(?: user)? (\S+)|enqueue (?:error|failure|conflict)|lock table overflow/i,"Object locked during import","Someone (or another import) held a lock on the object.",["Check and release locks in SM12.","Re-import."],["SM12"]),
+ R("NSMOD","Namespace and changeability","error",/namespace (\S+) .*not (?:modifiable|changeable)|(?:not modifiable|cannot be changed).*(?:namespace|software component)/i,"Namespace not changeable","The system's change settings don't allow this namespace or software component to be changed.",["Check SE06 (system change option) and SCC4 in the target.","Adjust only per your change policy, then re-import."],["SE06","SCC4"]),
+ R("COMPVER","Component versions","error",/component version|software component .*(?:differ|mismatch|not identical)|SAP_BASIS .*(?:differ|mismatch)/i,"Component version mismatch","Source and target are on different support package levels for a component in the request.",["Compare levels in SPAM / System → Status in both systems.","Align them, or import with 'ignore invalid component version' only after review."],["SPAM","STMS"]),
+ R("DBCONN","tp, OS and database","error",/connect(?:ion)? to (?:the )?database failed|could not connect|DB-?connect|database connect(?:ion)? (?:error|failed)/i,"No database connection","tp/R3trans couldn't log on to the database.",["Run R3trans -d as <sid>adm and read trans.log.","On HANA check hdbuserstore (DEFAULT key) and the client version."],["R3trans -d"]),
+ R("FILE","tp, OS and database","error",/permission denied|cannot open|could not open|no such file|file not found|cannot (?:read|write)/i,"File or permission problem","tp couldn't read or write a file in the transport directory (data file, cofile or log).",["Check that the data and cofile exist in /usr/sap/trans and the permissions for <sid>adm.","Check the mount of /usr/sap/trans on the target host."],["AL11","OS"]),
+ R("DISK","tp, OS and database","error",/no space left|disk full|file ?system full|tablespace .*full|log (?:area|volume) full/i,"Storage full","The file system or database ran out of space during the import.",["Free or extend the affected file system or database volume.","Re-import."],["DB02","OS"]),
+ R("DBERR","tp, OS and database","error",/SQL (?:code|error)\s*:?\s*-?\d+|SQLSTATE|HANA error|ORA-\d+|dbsl/i,"Database error","The database rejected a statement during the import.",["Read the full SQL error text in the log and in ST22/SM21.","Check database traces; fix and re-import."],["ST22","SM21","DBACOCKPIT"]),
+ R("KILLED","tp, OS and database","error",/signal\s*\d+|killed|core dumped/i,"Import process killed","The tp or R3trans process was stopped by the OS or an operator.",["Check SM21 and OS logs for the time of the import.","Re-run the import once the cause is cleared."],["SM21"]),
+ R("INTERRUPT","Symptom","symptom",/Activation was interrupted/i,"Activation interrupted (symptom)","Generic message. The reason is in the SE11 activation log of the object.",[]),
+ R("NOTACT","Symptom","symptom",/(?:TABL|Table|VIEW|DTEL|DOMA|DDLS) (\S+) was not activated/i,"Not activated (symptom)","Summary line; the cause is on the other error lines for the object.",[]),
+ R("CHECKERR","Symptom","symptom",/Check on (?:table|view) (\S+) resulted in errors/i,"Check failed (symptom)","Summary from the dictionary check; the error lines above it are the cause.",[]),
+ R("NOTIMP","Symptom","symptom",/(?:were|was) not imported|not imported/i,"Not imported (symptom)","Summary line; look for the cause next to it.",[]),
+ R("NS_SAP","Noise","noise",/Field name (\S+) can be passed to this system; do not use it/i,"SAP field name in customer table","Expected for generated tables. Safe to ignore.",[]),
+ R("NS_CUST","Noise","noise",/Field name (\S+) can already exist in a subsequent system/i,"Customer field name warning","Standard namespace warning for ZZ/ZZ1_ fields. Safe to ignore.",[]),
+ R("NS_INDEX","Noise","noise",/Index (\S+) is not in the customer namespace/i,"SAP index name on generated table","Safe to ignore.",[]),
+ R("ENHCAT","Noise","noise",/enhancement category/i,"Enhancement category warning","Classification warning; doesn't block activation.",[])
 ];
-
-const STRUCTURAL = [/^[=#\-_*]{4,}$/, /^I1 I2 I3 ED/i, /^Log Text$/i, /^U\d{10,}$/, /^Log File\b/i, /^Transport request\s*:/i,
+const STRUCT_ABAP = [/^[=#\-_*]{4,}$/, /^I1 I2 I3 ED/i, /^Log Text$/i, /^U\d{10,}$/, /^Log File\b/i, /^Transport request\s*:/i,
   /^System\s*:/i, /^tp path/i, /^Version and release/i, /^(Start|End) of\b/i, /^End date and time/i, /^Ended with return code/i,
   /^Table generator started/i, /has been saved$/i, /^Message from the Data Dictionary/i, /^(?:Table|TABL) \S+ activated$/i,
   /^Check table \S+/i, /^Activation of worklist/i, /^Technical log/i, /^See log/i, /^End of activation/i,
@@ -282,9 +263,8 @@ const STRUCTURAL = [/^[=#\-_*]{4,}$/, /^I1 I2 I3 ED/i, /^Log Text$/i, /^U\d{10,}
   /^Post-import methods/i, /belongs to package/i, /^There are no/i, /^No \w+ .*exist/i, /have been executed$/i, /were executed$/i,
   /^Execute reports/i, /^Execution of programs/i, /^Generation of programs/i, /^Main import/i];
 const ERRORISH = /\b(errors?|not|failed|fail|cannot|can't|could not|terminated|cancell?ed|invalid|missing|does not exist|inconsistent|abort(?:ed)?|dump|exception|unknown|denied|full|incorrect|wrong|conflict|locked|refused|timed? ?out)\b|return code\s*[:=]?\s*(?:[89]|1\d)/i;
-
 const FIXED_KEYS = ["MANDT","KAPPL","KSCHL","KFRST","DATBI"];
-function rcInfo(rc){
+function rcInfoAbap(rc){
   if (rc === null || rc === undefined) return {cls:"u", text:"No return code in this log"};
   if (rc === 0) return {cls:"g", text:"Imported without problems"};
   if (rc === 4) return {cls:"w", text:"Warnings: objects imported, check the warnings"};
@@ -298,46 +278,89 @@ function rcInfo(rc){
 }
 
 /* =====================================================================
-   State
+   BTP Cloud Transport Management rule library
    ===================================================================== */
-const S = { logs:[], learned:[], session:[], cases:[], drafts:{}, aiBusy:{}, view:"triage",
-  db:null, sample:null, user:null, me:null, canWrite:null, names:{}, kbFilter:"", kbCat:"", pendingRender:false, showAllUnmatched:false, lastSaved:"" };
+const CATS_BTP = ["Integration Suite content","Content Agent and destinations","MTA deployment","Entitlements and quota","Security (xsuaa)","HDI and database","Node and route configuration","Symptom","Noise"];
+const BUILTIN_BTP = [
+ R("CPI_UNIQ","Integration Suite content","error",/UniquenessViolationException/i,"Package or artifact ID already exists in the target tenant",
+   "Cloud Integration in the target tenant rejected the import because an object with the same ID already exists there. Usually an artifact with the same ID sits in a different package, or a package with the same ID was created or imported outside Cloud Transport Management (manual import, copy from SAP Business Accelerator Hub, or a renamed or copied package).",
+   ["In the target tenant, open Design and check whether package '{obj}' exists and whether its technical name matches the one in DEV.","Search the target tenant for each artifact ID in the package (integration flows, message and value mappings, script collections). Look for the same ID in another package.","Agree with the integration team which copy is correct. Before removing anything, note its externalized parameters and configuration.","Delete or rename the conflicting artifact or package in the target, then re-import the request from the node's import queue.","From now on, move this package only through Cloud Transport Management: no manual imports or copies in QA or later tenants."],
+   ["Integration Suite → Design","Integration Suite → Monitor → Integration Content","cTMS → Import Queue"],
+   "Compare the package technical name and the artifact IDs in DEV and in the target tenant (package → Artifacts tab)."),
+ R("CPI_LOCK","Integration Suite content","error",/(?:artifact|package|integration flow|iflow).*(?:locked|is being edited|in edit mode|checked out)|locked by/i,"Artifact locked in target tenant",
+   "Someone has the package or artifact open for editing in the target tenant, so the import can't overwrite it.",["Ask the editor to save or cancel the edit in the target tenant (Design → package → Edit → Cancel).","Re-import the request."],["Integration Suite → Design"]),
+ R("CPI_VERSION","Integration Suite content","warning",/version .*(?:already exists|is (?:lower|older))|same version .*already/i,"Version already in target",
+   "The target already holds this version (or a newer one) of the artifact.",["Check the artifact version in DEV and in the target.","Save a new version in DEV and transport again, or confirm the target is already correct."],["Integration Suite → Design"]),
+ R("CPI_SECMAT","Integration Suite content","error",/(?:credential|keystore|security material|alias|user credentials?|secure parameter|OAuth2? credential)[^.]*(?:not (?:found|exist|deployed|available)|missing)/i,"Security material missing in target",
+   "The integration flow refers to a credential or key that doesn't exist in the target tenant. Security material is never transported.",["Create or deploy the security material in the target tenant with exactly the same name (Monitor → Security Material, Keystore).","Redeploy the integration flow."],["Integration Suite → Monitor → Security Material"]),
+ R("CPI_EXTPARAM","Integration Suite content","warning",/externali[sz]ed parameter|parameter .*(?:missing|not (?:set|configured))/i,"Externalized parameter not configured",
+   "A parameter that differs per tenant hasn't been configured in the target.",["Configure the parameter in the target tenant (package → artifact → Configure).","Deploy the artifact."],["Integration Suite → Design → Configure"]),
+ R("CPI_RUNTIME","Integration Suite content","error",/integration flow .*(?:failed to start|error)|(?:deployment|deploy) .*(?:runtime|worker) .*fail/i,"Integration flow failed to start",
+   "The content was imported but the integration flow didn't start on the runtime.",["Open Monitor → Manage Integration Content in the target and read the error for the artifact.","Fix the configuration it names (endpoints, credentials, adapters) and redeploy."],["Integration Suite → Monitor → Manage Integration Content"]),
+ R("CAS_AUTH","Content Agent and destinations","error",/(?:HTTP|status|code)\s*:?\s*(?:401|403)\b|\b(?:401|403) (?:Unauthorized|Forbidden)|unauthori[sz]ed|forbidden|invalid (?:client|credentials)|access denied|insufficient (?:scope|authori[sz]ation)/i,"Content Agent can't sign in to the target",
+   "Content Agent or the deploy service was refused by the target. The destination's credentials are wrong or expired, or the technical client lacks the roles to import and deploy content.",["Check the transport node's destination in the cTMS subaccount (Check Connection).","In the target subaccount, check the destination Content Agent uses for Cloud Integration: client ID and secret, token URL, and the service key's roles for package import and artifact deployment.","Re-import."],["BTP cockpit → Destinations","BTP cockpit → Instances and Subscriptions"]),
+ R("CAS_NOTFOUND","Content Agent and destinations","error",/(?:HTTP|status|code)\s*:?\s*404\b|\b404 Not Found|destination .*(?:not found|does not exist)|(?:tenant|endpoint) .*not found/i,"Destination or endpoint not found",
+   "The node points to a destination or URL that doesn't resolve.",["Check the node's destination name and URL in cTMS, and that the target subaccount's Content Agent subscription is active.","Re-import."],["cTMS → Transport Nodes","BTP cockpit → Destinations"]),
+ R("CAS_TIMEOUT","Content Agent and destinations","warning",/timed? ?out|timeout|(?:HTTP|status|code)\s*:?\s*50[234]\b|service unavailable|bad gateway|gateway time/i,"Timeout or service unavailable",
+   "The target service didn't answer in time. Often transient.",["Check the SAP BTP status for the region.","Re-import once; if it fails again, treat it as a real error and read the target's own log."],["cTMS → Import Queue"]),
+ R("MTA_ROUTE","MTA deployment","error",/route .*(?:already exists|is taken|in use|bound to another)|host .*(?:taken|in use)/i,"Route already in use",
+   "The app's host name is already used, usually by the same app in another space.",["Give QA its own host names in a QA extension descriptor (.mtaext) or use host placeholders.","Re-import."],[".mtaext","cf routes"]),
+ R("MTA_QUOTA","Entitlements and quota","error",/(?:memory|disk|instance|service) quota|quota .*exceed|exceeds .*(?:memory|quota)|insufficient (?:memory|resources)/i,"Quota exceeded",
+   "The target space or org doesn't have enough memory, instances or service quota.",["Check the space and org quotas in the target subaccount.","Increase the quota or reduce memory in the QA extension descriptor; re-import."],["BTP cockpit → Space quota"]),
+ R("MTA_ENTITLE","Entitlements and quota","error",/service plan .*(?:not (?:available|found|entitled|visible))|not entitled|entitlement/i,"Missing entitlement in target",
+   "The MTA needs a service plan the target subaccount isn't entitled to.",["Compare entitlements between the DEV and QA subaccounts.","Add the missing entitlement and re-import."],["BTP cockpit → Entitlements"]),
+ R("MTA_XSUAA","Security (xsuaa)","error",/xsappname|xs-security|role collection .*(?:already exists|conflict)|scope .*conflict/i,"xsuaa configuration conflict",
+   "The app's security descriptor clashes with what already exists in the target.",["Check xsappname and role collection names for QA (use an extension descriptor for per-environment values).","Re-import."],["xs-security.json",".mtaext"]),
+ R("MTA_HDI","HDI and database","error",/\bhdi\b.*(?:fail|error)|deployer .*(?:failed|error)|grant(?:or)? .*(?:fail|missing)|synonym .*(?:not|fail)/i,"HDI deployment failed",
+   "The database deployer failed, often because of missing grants, synonym targets or an incompatible table change in the target.",["Read the deployer log: cf logs <db-deployer-app> --recent in the target space.","Fix the grant, synonym or data issue and re-import."],["cf logs","HANA Cloud Central"]),
+ R("MTA_STAGING","MTA deployment","error",/staging (?:failed|error)|buildpack|health check|(?:app|application|instance) .*crash|failed to start/i,"App failed to stage or start",
+   "The app built or started incorrectly in the target, often because of a runtime version, missing environment value or missing binding.",["Read cf logs <app> --recent in the target space.","Fix and re-import."],["cf logs"]),
+ R("MTA_CONFLICT","MTA deployment","error",/(?:conflicting|another|ongoing) (?:process|operation|deployment)|operation .*in progress/i,"Another deployment is running",
+   "An earlier deployment of the same MTA is still running or stuck in the target space.",["List operations with cf mta-ops and abort the stuck one (cf deploy -i <id> -a abort).","Re-import."],["cf mta-ops"]),
+ R("MTA_DESCRIPTOR","MTA deployment","error",/mtad\.yaml|mta\.yaml|extension descriptor|\.mtaext|unresolved (?:property|parameter|reference)/i,"MTA descriptor problem",
+   "A parameter or reference in the MTA or its extension descriptor can't be resolved in the target.",["Check the QA extension descriptor configured for the node.","Re-import."],[".mtaext","cTMS → Transport Nodes"]),
+ R("NODE_CTYPE","Node and route configuration","error",/content type .*(?:not supported|mismatch|invalid)|no destination (?:assigned|configured)/i,"Node configuration problem",
+   "The transport node's content type or destination doesn't fit the content.",["Check the node's content type and destination in cTMS.","Re-import."],["cTMS → Transport Nodes"]),
+ R("SYM_ERRDEPLOY","Symptom","symptom",/Error while deploying (\S+) module\.?\s*$/i,"Deployment error (symptom)","Summary line without detail; look for the exception or the target's own log.",[]),
+ R("SYM_MODFAIL","Symptom","symptom",/Deployment has failed for module (\S+)/i,"Module deployment failed (symptom)","Summary line; the cause is the error message next to it.",[]),
+ R("SYM_ABORT","Symptom","symptom",/Process is aborted\/skipped due to deployment failure for module (\S+?)\.?$/i,"Process aborted (symptom)","Follow-up of the deployment failure.",[]),
+ R("SYM_SKIPPED","Symptom","symptom",/Remote server skipped deployment/i,"Remote deployment skipped (symptom)","Follow-up of the deployment failure.",[]),
+ R("SYM_RCADJ","Symptom","symptom",/return code of .*(?:was )?adjusted to 'error'/i,"Return code set to error (symptom)","cTMS marks the request as failed because the deployment failed.",[]),
+ R("INFO_FWD","Node and route configuration","info",/forwarded to node '?([\w.-]+)'?/i,"Forwarded to the next node","The request was placed in the next node's import queue.",[])
+];
+const CTMS_STRUCT_IDS = ["CONTENT_REF_FORWARDED","TRANSPORTREQUEST_START","DESTINATION_DETAILS","DEPLOY_MODE_CAS","ENTITY_TO_DEPLOY","DEPLOYMENT_STARTED","TRANSPORTREQUEST_END","ENTITY_RC_ADJUSTED","TRANSPORTREQUEST_RC_ADJUSTED"];
+const CTMS_STRUCT = [/^Deployment has initialized/i, /^File is uploaded and Deployment has started/i, /^Import .* (?:started|ended)/i];
+function rcInfoBtp(rc){
+  if (rc === null || rc === undefined) return {cls:"u", text:"No status in this log"};
+  if (rc === 0) return {cls:"g", text:"Succeeded"};
+  if (rc === 4) return {cls:"w", text:"Succeeded with warnings"};
+  if (rc === 8) return {cls:"e", text:"Error: the content wasn't deployed to the target"};
+  if (rc >= 12) return {cls:"e", text:"Fatal: the action was cancelled"};
+  return {cls:"w", text:"Unusual status; check the action log"};
+}
+const CTMS_TYPES = {I:"Import", U:"Upload", F:"Forward", R:"Reset", D:"Delete"};
 
 /* =====================================================================
-   Parsing
+   State
    ===================================================================== */
-const toLines = t => t.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+/g," ").trim());
-function hash(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+const S = { learned:[], session:[], cases:[], view:"abap", db:null, sample:null, user:null, me:null, canWrite:null, names:{},
+  kbFilter:"", kbCat:"", kbPlat:"", pendingRender:false };
+const WS = {
+  abap:{key:"abap", logs:[], drafts:{}, aiBusy:{}, showAll:false, lastSaved:"", note:""},
+  btp:{key:"btp", logs:[], drafts:{}, aiBusy:{}, showAll:false, lastSaved:"", note:""}
+};
+function allRules(p){
+  const learned = [...S.learned, ...S.session].filter(r=>(r.platform||"abap")===p).map(r=>{
+    try { return {...r, re:new RegExp(r.pattern,"i"), sev:r.severity||"error", cat:r.category||"Symptom", fix:r.fixSteps||[], tx:r.transactions||[], cause:r.rootCause||""}; } catch { return null; }
+  }).filter(Boolean);
+  return [...learned, ...(p==="btp" ? BUILTIN_BTP : BUILTIN_ABAP)];
+}
+const ruleKey = r => r.source === "builtin" ? "b:"+r.id : "t:"+r.id;
 
-function signature(line){
-  return line
-    .replace(/\b[A-Z0-9]{3}K\d{6}\b/g,"<TR>")
-    .replace(/\b\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/g,"<DATE>")
-    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g,"<TIME>")
-    .replace(/"[^"]*"|'[^']*'/g,"<Q>")
-    .replace(/\b(Table|Program|Include|Class|Interface|Field|Object|View|Domain|Data element|Function module|Function group|Method|Report|Index|Structure|Search help|DDL source|Entity|Package|Switch|Enhancement implementation|Client|Request|user)\s+(?!<)([\w\/.$-]+)/gi,"$1 <OBJ>")
-    .replace(/(^|[\s(=:,])\/[A-Z0-9_]+\/[A-Z0-9_\/-]*/g,"$1<OBJ>")
-    .replace(/\b(?=[A-Z0-9_]*[0-9_])[A-Z][A-Z0-9_]{2,}\b/g,"<OBJ>")
-    .replace(/\b[ZY][A-Z0-9_]{2,}\b/g,"<OBJ>")
-    .replace(/\b\d+\b/g,"<N>");
-}
-function patternFromSignature(sig){
-  let first = true;
-  return sig.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")
-    .replace(/<OBJ>/g, ()=>{ if (first){ first=false; return "([\\w\\/.$-]+)"; } return "[\\w\\/.$-]+"; })
-    .replace(/<TR>/g,"[A-Z0-9]{3}K\\d{6}").replace(/<DATE>/g,"[\\d.\\/-]+").replace(/<TIME>/g,"[\\d:]+")
-    .replace(/<Q>/g,"(?:\"[^\"]*\"|'[^']*')").replace(/<N>/g,"\\d+").replace(/ /g,"\\s+");
-}
-function compileLearned(r){
-  try { return {...r, re:new RegExp(r.pattern,"i"), sev:r.severity||"error", cat:r.category||"Symptom", fix:r.fixSteps||[], tx:r.transactions||[], cause:r.rootCause||""}; }
-  catch { return null; }
-}
-function allRules(){
-  const learned = [...S.learned, ...S.session].map(compileLearned).filter(Boolean);
-  return [...learned, ...BUILTIN];           // team knowledge first
-}
-
-function detectMeta(text, name){
+/* =====================================================================
+   ABAP parsing
+   ===================================================================== */
+function detectAbapMeta(text, name){
   const m = text.match(/Log File\s+\S*?([A-Z0-9]{3})([A-Z])(\d{6})\.([A-Z0-9]{3})\b/) || name.match(/([A-Z0-9]{3})([A-Z])(\d{6})\.([A-Z0-9]{3})/);
   const meta = {letter:"?", tr:"", target:""};
   if (m){ meta.letter = STEPS[m[2]] ? m[2] : "?"; meta.tr = m[1]+"K"+m[3]; meta.target = m[4]; }
@@ -353,60 +376,142 @@ function detectMeta(text, name){
   if (!meta.tr){ const t = text.match(/\b([A-Z0-9]{3}K\d{6})\b/); if (t) meta.tr = t[1]; }
   return meta;
 }
-
-function analyzeLog(log, rules){
+function analyzeAbap(log, rules){
   const lines = log.lines;
-  let rc = null; const findings = []; const unknown = {}; const blocks = {}; let curBlock = null;
+  let rc = null; const findings = []; const unknown = {}; const blocks = {}; let cur = null;
   lines.forEach((l, i)=>{
     if (!l) return;
-    let m = l.match(/(?:Ended with return code|return code|exit code)\s*:?\s*=*>?\s*(\d+)/i);
-    if (m && /Ended with|exit code/i.test(l)) rc = Math.max(rc ?? 0, +m[1]);
+    const m = l.match(/(?:Ended with return code|exit code)\s*:?\s*=*>?\s*(\d+)/i);
+    if (m) rc = Math.max(rc ?? 0, +m[1]);
     const bm = l.match(/^(?:TABL (\S+) was not activated|Check table (\S+))/i);
-    if (bm){ const t = bm[1]||bm[2]; curBlock = blocks[t] ||= {fields:[]}; }
+    if (bm){ const t = bm[1]||bm[2]; cur = blocks[t] ||= {fields:[]}; }
     const fm = l.match(/^Field name (\w+)/i);
-    if (fm && curBlock && !curBlock.fields.includes(fm[1])) curBlock.fields.push(fm[1]);
+    if (fm && cur && !cur.fields.includes(fm[1])) cur.fields.push(fm[1]);
     if (/^Ended with return code/i.test(l)) return;
-    for (const r of rules){
-      const mm = l.match(r.re);
-      if (mm){ findings.push({rule:r, line:l, idx:i, obj:(mm[1]||"").replace(/[,:;.]$/,"")}); return; }
-    }
-    if (STRUCTURAL.some(re=>re.test(l))) return;
-    const sig = signature(l);
-    const key = hash(sig);
-    const errorish = ERRORISH.test(l);
-    if (!unknown[key]) unknown[key] = {key, sig, line:l, idx:i, count:0, errorish, context: lines.slice(Math.max(0,i-4), i+5).filter(Boolean)};
-    unknown[key].count++;
+    for (const r of rules){ const mm = l.match(r.re); if (mm){ findings.push({rule:r, line:l, obj:(mm[1]||"").replace(/[,:;.]$/,"")}); return; } }
+    if (STRUCT_ABAP.some(re=>re.test(l))) return;
+    addUnknown(unknown, "abap", l, ERRORISH.test(l), lines.slice(Math.max(0,i-4), i+5).filter(Boolean));
   });
-  return {rc, findings, unknown:Object.values(unknown), blocks};
+  return {...log, rc, findings, unknown:Object.values(unknown), blocks, stepLabel: `${log.letter} · ${STEPS[log.letter]||""}`};
 }
-
-function analyzeAll(){
-  const rules = allRules();
-  return S.logs.map(log=>({...log, ...analyzeLog(log, rules)}));
-}
-
-async function readFile(file){
-  const ext = file.name.split(".").pop().toLowerCase();
-  if ((ext==="xlsx"||ext==="xls") && window.XLSX){
-    const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
-    const out = [];
-    wb.SheetNames.forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, blankrows:true, defval:""})
-      .forEach(r=>out.push(r.map(c=>String(c).trim()).filter(Boolean).join(" "))));
-    return out.join("\n");
-  }
-  return await file.text();
-}
-function addLog(text, name){
-  const meta = detectMeta(text, name);
-  S.logs.push({id: hash(name + text.length + S.logs.length), name, ...meta, lines: toLines(text)});
+function addUnknown(map, p, line, errorish, context){
+  const sig = signature(line), key = p + hash(sig);
+  if (!map[key]) map[key] = {key, sig, line, count:0, errorish, context};
+  map[key].count++;
 }
 
 /* =====================================================================
-   Helpers
+   BTP / cTMS parsing
    ===================================================================== */
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmtDate = iso => { try { return new Date(iso).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); } catch { return iso; } };
-const ruleKey = r => r.source === "builtin" ? "b:"+r.id : "t:"+r.id;
+function parseCtms(text){
+  const raw = text.replace(/\r/g,"").split("\n");
+  const h = {}; const msgs = []; const reqs = [];
+  const hdr = (k, re) => { const m = text.match(re); if (m) h[k] = m[1].trim(); };
+  hdr("action", /^Action ID:\s*(.+)$/m); hdr("type", /^Type:\s*(.+)$/m); hdr("node", /^Node:\s*(.+)$/m);
+  hdr("user", /^User:\s*(.+)$/m); hdr("start", /^Start time:\s*(.+)$/m); hdr("end", /^End time:\s*(.+)$/m);
+  hdr("status", /^Overall Action Status:\s*(.+)$/m);
+  raw.forEach(line=>{
+    const r = line.match(/^-\s*Transport Request\s+"(.+)";\s*ID:\s*([\d,]+);\s*Status:\s*(\d+)/i);
+    if (r){ reqs.push({name:r[1], id:r[2].replace(/,/g,""), status:+r[3]}); return; }
+    const cols = line.split("\t");
+    if (cols.length >= 6 && /^\d+$/.test(cols[0].trim())){
+      msgs.push({id:cols[0].trim(), at:cols[1].trim(), msgId:cols[3].trim(), text:cols.slice(4, cols.length-1).join(" ").replace(/\s+/g," ").trim(), sev:cols[cols.length-1].trim().toUpperCase()});
+      return;
+    }
+    const m = line.replace(/\s+/g," ").trim().match(/^(\d+) (\d{4}-\d{2}-\d{2} [\d:.]+) ([0-9A-F]{64}) (?:([A-Z][A-Z_]+) )?(.*?) ([IWE])$/);
+    if (m) msgs.push({id:m[1], at:m[2], msgId:m[4]||"", text:m[5], sev:m[6]});
+  });
+  msgs.sort((a,b)=> a.at < b.at ? -1 : a.at > b.at ? 1 : (+a.id) - (+b.id));
+  const all = msgs.map(m=>m.text).join("\n");
+  const g = re => { const m = all.match(re); return m ? m[1] : ""; };
+  const facts = {
+    destUri: g(/URI='([^']+)'/), destName: g(/URI='[^']+' \(name: '([^']+)'\)/),
+    contentType: g(/content type '([^']+)'/i),
+    mode: /DEPLOY_MODE_CAS/.test(msgs.map(m=>m.msgId).join(" ")) || /Content Agent Service/i.test(all) ? "Content Agent service (Integration Suite)" : /deploy-service|slprot/i.test(all) ? "MTA deploy service (Cloud Foundry)" : "",
+    entity: g(/Entity to deploy: '([^']+)'/), processId: g(/Process id: ([0-9a-f-]{36})/i),
+    remoteId: g(/process with id ([0-9a-f-]{36})/i),
+    forwardedTo: [...new Set(msgs.filter(m=>/forwarded to node/i.test(m.text)).map(m=>(m.text.match(/forwarded to node '?([\w.-]+)'?/i)||[])[1]).filter(Boolean))],
+    exceptions: [...new Set((all.match(/(?:[a-z_]\w*\.)+[A-Z]\w*(?:Exception|Error)\b/g)||[]))]
+  };
+  const rc = h.status !== undefined && /^\d+$/.test(h.status) ? +h.status : (reqs[0] ? reqs[0].status : null);
+  return {h, msgs, reqs, facts, rc};
+}
+function analyzeBtp(log, rules){
+  const p = parseCtms(log.text);
+  const findings = []; const unknown = {};
+  const texts = p.msgs.map(m=>m.text);
+  p.msgs.forEach((m, i)=>{
+    // Error lines carrying a nested JSON message: match against the whole text
+    for (const r of rules){ const mm = m.text.match(r.re); if (mm){
+      let obj = (mm[1]||"").replace(/[,:;.]$/,"");
+      if (!obj){ const mod = m.text.match(/module (\S+?)\.?(?:\s|$)/i) || m.text.match(/deploying (\S+) module/i); if (mod) obj = mod[1]; }
+      findings.push({rule:r, line:m.text, obj, sev:m.sev}); return; } }
+    if (CTMS_STRUCT_IDS.includes(m.msgId) || CTMS_STRUCT.some(re=>re.test(m.text))) return;
+    const errorish = m.sev==="E" || m.sev==="W" || (!m.sev && ERRORISH.test(m.text));
+    addUnknown(unknown, "btp", m.text, errorish, texts.slice(Math.max(0,i-3), i+4));
+  });
+  const insights = [];
+  if (p.rc >= 8 && p.facts.forwardedTo.length) insights.push({sev:"warning", title:`Already forwarded to ${p.facts.forwardedTo.join(", ")} although this import failed`,
+    text:`The request was placed in the next node's queue before the import ran, so the failed content is now waiting there too. Hold it in ${p.facts.forwardedTo.join(", ")} until this node imports cleanly. Check the forward mode of node '${p.h.node||"?"}' (forward before import versus after a successful import) so failed content stops moving on.`});
+  if (p.rc >= 8 && p.h.start && p.h.end && p.h.start === p.h.end) insights.push({sev:"info", title:"Failed within the same minute it started",
+    text:"The failure came while the content was being written to the target, before any runtime deployment. Look at the target's design-time content (for Integration Suite: Design), not at runtime logs."});
+  if (p.facts.mode.startsWith("MTA") && (p.facts.processId || p.facts.remoteId)) insights.push({sev:"info", title:"Read the full MTA deployment log",
+    text:`In the target space run: cf dmol -i ${p.facts.remoteId || p.facts.processId}`});
+  return {...log, ...p, rc:p.rc, findings, unknown:Object.values(unknown), blocks:{}, tr: p.reqs[0] ? p.reqs[0].name : "", target: p.h.node || "",
+    stepLabel: `${CTMS_TYPES[p.h.type]||p.h.type||"Action"} · ${p.facts.contentType || "content"}`, insights};
+}
+
+/* =====================================================================
+   Platform definitions
+   ===================================================================== */
+const PLAT = {
+  abap: {
+    title:"S/4HANA transports", cats:CATS_ABAP, rcInfo:rcInfoAbap,
+    intake:"Any tp step log from <code>/usr/sap/trans/log</code> (H, A, I, R, G…), STMS or SE01 log exports (.xlsx or .txt), SE11 activation logs, ALOG/SLOG extracts.",
+    examples:[["Example: DS4K904917 (condition tables)", ()=>[[SAMPLE_TR,"DS4R904917.QS4"],[SAMPLE_ACT,"A9HU activation log (SE11)"]]],
+              ["Example: generation error (synthetic)", ()=>[[SAMPLE_SYN,"DS4G905102.QS4 (synthetic example)"]]]],
+    analyze: analyzeAbap,
+    aiRole:"a senior SAP Basis consultant for SAP S/4HANA on the ABAP platform. Be specific to SAP CTS, tp and R3trans behaviour.",
+    aiLog: l=>`Request ${l.tr||"?"}, target ${l.target||"?"}, step ${l.stepLabel}, step return code ${l.rc ?? "?"}`
+  },
+  btp: {
+    title:"BTP Cloud Transport", cats:CATS_BTP, rcInfo:rcInfoBtp,
+    intake:"Cloud Transport Management action logs: Transport Nodes → node → Import Queue → request → Logs → Download (.log), or paste the log text. Integration Suite now; MTA/CAP apps use the same intake.",
+    examples:[["Example: Integration Suite import 14576", ()=>[[SAMPLE_CTMS,"transportLog14576.log"]]]],
+    analyze: analyzeBtp,
+    aiRole:"a senior SAP BTP platform engineer experienced with Cloud Transport Management, the Content Agent service, SAP Integration Suite (Cloud Integration) and the Cloud Foundry MTA deploy service.",
+    aiLog: l=>`Cloud Transport Management action ${l.h?.action||"?"} (${CTMS_TYPES[l.h?.type]||l.h?.type||"?"}) on node ${l.target||"?"}, request "${l.tr||"?"}", content type ${l.facts?.contentType||"?"}, deploy mode ${l.facts?.mode||"?"}, destination ${l.facts?.destUri||"?"}, status ${l.rc ?? "?"}`
+  }
+};
+function looksLikeCtms(text){ return /Overall Action Status|^-\s*Transport Request\s+"/m.test(text) || /\t(?:TRANSPORTREQUEST_START|DEPLOY_MODE_CAS|DESTINATION_DETAILS)\t/.test(text); }
+
+/* =====================================================================
+   Workspace analysis
+   ===================================================================== */
+function analyzeWs(p){ const rules = allRules(p); return WS[p].logs.map(l=>PLAT[p].analyze(l, rules)); }
+function addLog(p, text, name){
+  const target = looksLikeCtms(text) ? "btp" : (p==="btp" && !looksLikeCtms(text) && /Ended with return code|Transport request\s*:|Activation of worklist/i.test(text) ? "abap" : p);
+  const base = {id: hash(name + text.length + Date.now()), name, text, lines: toLines(text)};
+  if (target === "abap") Object.assign(base, detectAbapMeta(text, name));
+  WS[target].logs.push(base);
+  if (target !== p){ WS[target].note = `"${name}" looked like a ${PLAT[target].title} log, so it was added here.`; S.view = target; }
+}
+function unknownGroups(A){
+  const all = [], seen = new Set();
+  A.forEach(log=>log.unknown.forEach(u=>{ if (!seen.has(u.key)){ seen.add(u.key); all.push({...u, log}); } }));
+  return all;
+}
+function groupFindings(A){
+  const g = {};
+  A.forEach(log=>log.findings.forEach(f=>{
+    const k = ruleKey(f.rule);
+    const e = g[k] ||= {rule:f.rule, objs:new Set(), lines:[], blocks:[]};
+    if (f.obj) e.objs.add(f.obj);
+    if (e.lines.length<3 && !e.lines.includes(f.line)) e.lines.push(f.line);
+    if (f.rule.id==="KEY16" && f.obj && log.blocks[f.obj]) e.blocks.push({t:f.obj, fields:log.blocks[f.obj].fields});
+  }));
+  return Object.values(g);
+}
 function seenStats(){
   const m = {};
   S.cases.forEach(c=>(c.ruleKeys||[]).forEach(k=>{ const s = m[k] ||= {n:0, last:null, tr:""}; s.n++; if (!s.last || c.at > s.last){ s.last=c.at; s.tr=c.tr; } }));
@@ -418,9 +523,8 @@ async function resolveNames(ids){
   const missing = [...new Set(ids.filter(id=>id && !(id in S.names)))];
   if (!missing.length) return;
   const ps = await S.user.profiles(missing);
-  let changed = false;
-  missing.forEach(id=>{ S.names[id] = ps[id]?.name || ""; changed = true; });
-  if (changed) safeRender();
+  missing.forEach(id=>{ S.names[id] = ps[id]?.name || ""; });
+  safeRender();
 }
 function safeRender(){
   const a = document.activeElement;
@@ -430,80 +534,131 @@ function safeRender(){
 document.addEventListener("focusout", ()=>{ setTimeout(()=>{ if (S.pendingRender){ const a=document.activeElement; if (!(a && a.closest && a.closest(".draft, .kbedit"))){ S.pendingRender=false; render(); } } }, 0); });
 
 /* =====================================================================
-   Render: Triage
+   Workspace skeleton (built once per platform)
+   ===================================================================== */
+function buildWs(p){
+  const P = PLAT[p], el = document.getElementById("view-"+p);
+  el.innerHTML = `<div style="display:grid;gap:24px">
+    <div class="pipe" id="${p}-pipe" aria-label="Analysis pipeline"></div>
+    <section class="panel" aria-labelledby="${p}-h-read">
+      <div class="ph"><h2 id="${p}-h-read"><span class="stage">1</span>Read the logs</h2>
+        <div class="row">${P.examples.map((e,i)=>`<button type="button" data-ex="${i}">${esc(e[0])}</button>`).join("")}<button type="button" data-clear="1">Clear</button></div></div>
+      <div class="intake">
+        <div class="drop" id="${p}-drop"><strong>Drop log files here</strong><span class="hint">${P.intake} Several at once is fine. Files are read in your browser.</span>
+          <input type="file" id="${p}-file" multiple aria-label="Choose log files"></div>
+        <div style="display:grid;gap:8px;min-width:0">
+          <label for="${p}-paste" class="hint">Or paste log text</label>
+          <textarea id="${p}-paste" placeholder="Paste a transport log…"></textarea>
+          <div class="row"><button class="primary" type="button" data-paste="1">Analyze pasted text</button></div>
+        </div>
+      </div>
+      <div class="row" id="${p}-loaded"></div>
+    </section>
+    <section class="panel" id="${p}-und"></section>
+    <section class="panel" id="${p}-known"></section>
+    <section class="panel" id="${p}-unk"></section>
+    <section class="panel" id="${p}-rem"></section>
+  </div>`;
+  const ws = WS[p];
+  el.querySelectorAll("[data-ex]").forEach(b=>b.onclick=()=>{ resetWs(p); P.examples[+b.dataset.ex][1]().forEach(([t,n])=>addLog(p,t,n)); render(); });
+  el.querySelector("[data-clear]").onclick = ()=>{ resetWs(p); render(); };
+  el.querySelector("[data-paste]").onclick = ()=>{ const ta=document.getElementById(p+"-paste"); if (ta.value.trim()){ addLog(p, ta.value, "pasted text"); ta.value=""; render(); } };
+  const handle = async list=>{ for (const f of list){ try { addLog(p, await readFile(f), f.name); } catch { ws.note = `Couldn't read ${f.name}.`; } } render(); };
+  document.getElementById(p+"-file").onchange = e=>handle(e.target.files);
+  const drop = document.getElementById(p+"-drop");
+  drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", ()=>drop.classList.remove("over"));
+  drop.addEventListener("drop", e=>{ e.preventDefault(); drop.classList.remove("over"); handle(e.dataTransfer.files); });
+}
+function resetWs(p){ Object.assign(WS[p], {logs:[], drafts:{}, aiBusy:{}, showAll:false, lastSaved:"", note:""}); }
+async function readFile(file){
+  const ext = file.name.split(".").pop().toLowerCase();
+  if ((ext==="xlsx"||ext==="xls") && window.XLSX){
+    const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
+    const out = [];
+    wb.SheetNames.forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, blankrows:true, defval:""})
+      .forEach(r=>out.push(r.map(c=>String(c).trim()).filter(Boolean).join("\t"))));
+    return out.join("\n");
+  }
+  return await file.text();
+}
+
+/* =====================================================================
+   Render
    ===================================================================== */
 function render(){
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.view===S.view)));
-  document.getElementById("tab-kb").textContent = `Knowledge base (${BUILTIN.length + S.learned.length + S.session.length})`;
+  document.getElementById("tab-kb").textContent = `Knowledge base (${BUILTIN_ABAP.length + BUILTIN_BTP.length + S.learned.length + S.session.length})`;
   document.getElementById("tab-history").textContent = `Case history (${S.cases.length})`;
-  document.getElementById("viewTriage").hidden = S.view!=="triage";
-  document.getElementById("viewKb").hidden = S.view!=="kb";
-  document.getElementById("viewHistory").hidden = S.view!=="history";
-  const A = analyzeAll();
-  renderLoaded(); renderPipe(A); renderUnderstand(A); renderKnown(A); renderUnknown(A); renderRemember(A);
+  ["abap","btp","kb","history"].forEach(v=>document.getElementById("view-"+v).hidden = S.view!==v);
+  if (S.view==="abap" || S.view==="btp") renderWs(S.view);
   if (S.view==="kb") renderKb();
   if (S.view==="history") renderHistory();
 }
 
-function renderLoaded(){
-  document.getElementById("loaded").innerHTML = S.logs.length
-    ? S.logs.map(l=>`<span class="tag">${esc(l.letter)} · ${esc(l.name)}</span>`).join("")
-    : `<span class="hint">No logs loaded yet.</span>`;
+function renderWs(p){
+  const ws = WS[p], A = analyzeWs(p);
+  document.getElementById(p+"-loaded").innerHTML = (ws.note?`<div class="notice" style="width:100%">${esc(ws.note)}</div>`:"") + (ws.logs.length
+    ? ws.logs.map(l=>`<span class="tag">${esc(p==="abap"?l.letter:"cTMS")} · ${esc(l.name)}</span>`).join("") : `<span class="hint">No logs loaded yet.</span>`);
+  renderPipe(p, A); renderUnderstand(p, A); renderKnown(p, A); renderUnknown(p, A); renderRemember(p, A);
 }
 
-function unknownGroups(A){
-  const all = [];
-  A.forEach(log=>log.unknown.forEach(u=>all.push({...u, log})));
-  const seen = new Set();
-  return all.filter(u=>{ if (seen.has(u.key)) return false; seen.add(u.key); return true; });
-}
-
-function renderPipe(A){
-  const any = A.length>0;
+function renderPipe(p, A){
+  const ws = WS[p], any = A.length>0, P = PLAT[p];
   const real = A.flatMap(l=>l.findings).filter(f=>f.rule.sev==="error"||f.rule.sev==="warning");
   const unk = unknownGroups(A).filter(u=>u.errorish);
-  const drafts = Object.keys(S.drafts).length;
-  const saved = S.lastSaved && S.lastSaved === caseId(A);
+  const saved = ws.lastSaved && ws.lastSaved === caseId(p, A);
   const st = [
-    {t:"Read", d: any ? `${A.length} log${A.length>1?"s":""}, ${A.reduce((n,l)=>n+l.lines.filter(Boolean).length,0)} lines` : "Drop a log", c: any?"done":""},
-    {t:"Understand", d: any ? A.map(l=>`${l.letter}: RC ${l.rc ?? "?"}`).join(" · ") : "Step and return code", c: any?"done":""},
+    {t:"Read", d: any ? `${A.length} log${A.length>1?"s":""}` : "Drop a log", c: any?"done":""},
+    {t:"Understand", d: any ? A.map(l=>`${p==="abap"?l.letter:"status"} ${l.rc ?? "?"}`).join(" · ") : (p==="abap"?"Step and return code":"Action, node and status"), c: any?"done":""},
     {t:"Match", d: any ? `${real.length} known error${real.length===1?"":"s"}` : "Known errors and fixes", c: any?"done":""},
-    {t:"Decide", d: !any ? "Unknown errors: you choose" : unk.length ? `${unk.length} unknown: your choice` : "Nothing unknown", c: !any?"": drafts? "ai" : unk.length?"attn":"done"},
+    {t:"Decide", d: !any ? "Unknown errors: you choose" : unk.length ? `${unk.length} unknown: your choice` : "Nothing unknown", c: !any?"": Object.keys(ws.drafts).length ? "ai" : unk.length?"attn":"done"},
     {t:"Remember", d: saved ? "Case saved" : "Save case and new rules", c: saved?"done":""}
   ];
-  document.getElementById("pipe").innerHTML = st.map((s,i)=>`<div class="pstep ${s.c}"><span class="n">${i+1} / 5</span><b>${s.t}</b><span>${esc(s.d)}</span></div>`).join("");
+  document.getElementById(p+"-pipe").innerHTML = st.map((s,i)=>`<div class="pstep ${s.c}"><span class="n">${i+1} / 5</span><b>${s.t}</b><span>${esc(s.d)}</span></div>`).join("");
 }
 
-function renderUnderstand(A){
-  const el = document.getElementById("secUnderstand");
-  if (!A.length){ el.innerHTML = `<div class="ph"><h2 id="h-und"><span class="stage">2</span>Understand the step and return code</h2></div><div class="empty">Load a log to see which import step it belongs to and what its return code means.</div>`; return; }
-  el.innerHTML = `<div class="ph"><h2 id="h-und"><span class="stage">2</span>Understand the step and return code</h2></div>` +
-    A.map(log=>{
-      const ri = rcInfo(log.rc);
-      return `<div class="logcard">
+function renderUnderstand(p, A){
+  const el = document.getElementById(p+"-und"), P = PLAT[p];
+  const head = `<div class="ph"><h2><span class="stage">2</span>${p==="abap"?"Understand the step and return code":"Understand the action, node and status"}</h2></div>`;
+  if (!A.length){ el.innerHTML = head + `<div class="empty">${p==="abap"?"Load a log to see which import step it belongs to and what its return code means.":"Load a Cloud Transport Management log to see the request, the route it took, where it failed and every message in order."}</div>`; return; }
+  el.innerHTML = head + A.map(log=>{
+    const ri = P.rcInfo(log.rc);
+    if (p==="abap") return `<div class="logcard">
         <div class="row between"><b class="mono">${esc(log.name)}</b><span class="rc ${ri.cls}">RC ${log.rc ?? "?"}</span></div>
         <div class="facts">
           <div class="fact"><span>Request</span><b>${esc(log.tr||"–")}</b></div>
           <div class="fact"><span>Target</span><b>${esc(log.target||"–")}</b></div>
-          <div class="fact"><span>Step</span><b>${esc(log.letter)} · ${esc(STEPS[log.letter]||"")}</b></div>
+          <div class="fact"><span>Step</span><b>${esc(log.stepLabel)}</b></div>
           <div class="fact"><span>Meaning</span><b style="font-family:var(--f-body);font-size:.86rem">${esc(ri.text)}</b></div>
         </div>
         ${log.rc>=8 && !log.findings.some(f=>f.rule.sev==="error") ? `<p class="hint"><b>Where to look next:</b> ${esc(NEXT_LOOK[log.letter]||NEXT_LOOK["?"])}</p>`:""}
       </div>`;
-    }).join("");
-}
-
-function groupFindings(A){
-  const g = {};
-  A.forEach(log=>log.findings.forEach(f=>{
-    const k = ruleKey(f.rule);
-    const e = g[k] ||= {rule:f.rule, objs:new Set(), lines:[], logs:new Set(), blocks:[]};
-    if (f.obj) e.objs.add(f.obj);
-    if (e.lines.length<3) e.lines.push(f.line);
-    e.logs.add(log.letter);
-    if (f.rule.id==="KEY16" && f.obj && log.blocks[f.obj]) e.blocks.push({t:f.obj, fields:log.blocks[f.obj].fields});
-  }));
-  return Object.values(g);
+    const f = log.facts, h = log.h, req = log.reqs[0] || {};
+    const failedNode = log.rc>=8;
+    return `<div class="logcard">
+      <div class="row between"><b class="mono">${esc(log.name)}</b><span class="rc long ${ri.cls}">Status ${log.rc ?? "?"} · ${esc(ri.text)}</span></div>
+      <div class="facts">
+        <div class="fact"><span>Action</span><b>${esc(h.action||"–")} · ${esc(CTMS_TYPES[h.type]||h.type||"")}</b></div>
+        <div class="fact"><span>Target node</span><b>${esc(h.node||"–")}</b></div>
+        <div class="fact"><span>Transport request</span><b style="font-family:var(--f-body)">${esc(req.name||"–")}${req.id?` <span class="hint mono">(ID ${esc(req.id)})</span>`:""}</b></div>
+        <div class="fact"><span>Content</span><b>${esc(f.entity||f.contentType||"–")}</b></div>
+        <div class="fact"><span>Deployed through</span><b style="font-family:var(--f-body);font-size:.86rem">${esc(f.mode||"–")}</b></div>
+        <div class="fact"><span>Destination</span><b>${esc(f.destName||"–")}</b></div>
+        <div class="fact"><span>Started / ended</span><b>${esc(h.start||"–")}${h.end && h.end!==h.start?` → ${esc(h.end)}`:""}</b></div>
+      </div>
+      <div class="flow" aria-label="Route"><span class="hint" style="font-family:var(--f-body)">Route:</span>
+        <span class="n ${failedNode?"bad":""}">${esc(h.node||"node")} ${failedNode?"✕ failed":"✓"}</span>
+        ${f.forwardedTo.map(n=>`<span>→</span><span class="n fwd">${esc(n)} · queued</span>`).join("")}
+      </div>
+      ${f.exceptions.length?`<p class="hint">Exception reported by the target: <span class="mono">${f.exceptions.map(esc).join(", ")}</span></p>`:""}
+      ${log.insights.map(i=>`<div class="insight ${i.sev}"><span class="stripe"></span><div style="display:grid;gap:4px"><b>${esc(i.title)}</b><span class="${i.text.startsWith("In the target space")?"cmd":""}">${esc(i.text)}</span></div></div>`).join("")}
+      <details ${log.msgs.length<=40?"open":""}><summary>All ${log.msgs.length} messages in order</summary>
+        <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Time</th><th>Message ID</th><th>Message</th><th>Sev.</th></tr></thead><tbody>
+        ${log.msgs.map(m=>`<tr class="row${esc(m.sev)}"><td class="m">${esc((m.at.split(" ")[1]||m.at).slice(0,12))}</td><td class="m">${esc(m.msgId||"")}</td><td style="overflow-wrap:anywhere">${esc(m.text)}</td><td class="sev${esc(m.sev)}">${esc(m.sev)}</td></tr>`).join("")}
+        </tbody></table></div></details>
+    </div>`;
+  }).join("");
 }
 
 function keyMeter(b){
@@ -514,98 +669,96 @@ function keyMeter(b){
     <div class="cells" role="img" aria-label="${keys.length} key fields">${keys.map((k,i)=>`<span class="cell ${FIXED_KEYS.includes(k)?"fixed":""} ${i>=16?"over":""}" title="${esc(k)}">${i+1}</span>`).join("")}</div>
     <span class="hint mono">${vars.map(esc).join(", ")}</span></div>`;
 }
-
 function findingCard(e, seen){
-  const r = e.rule, k = ruleKey(r), s = seen[k];
-  const team = r.source !== "builtin";
+  const r = e.rule, k = ruleKey(r), s = seen[k], team = r.source !== "builtin";
+  const obj = [...e.objs][0] || "";
+  const fill = t => String(t).replace(/\{obj\}/g, obj || "the package");
   return `<div class="find ${r.sev}"><span class="stripe"></span><div class="body">
     <div class="row between"><h3>${esc(r.title)}${e.objs.size?`: <span class="mono">${[...e.objs].slice(0,8).map(esc).join(", ")}${e.objs.size>8?` +${e.objs.size-8}`:""}</span>`:""}</h3>
-      <div class="badges">
-        <span class="pill ${r.sev}">${esc(r.sev)}</span>
-        <span class="pill">${esc(r.cat)}</span>
+      <div class="badges"><span class="pill ${r.sev}">${esc(r.sev)}</span><span class="pill">${esc(r.cat)}</span>
         <span class="pill ${team?"team":""}">${team ? (r.source==="ai"?"Team-learned (AI-assisted)":"Team-learned") : "Built-in"}</span>
-        ${s ? `<span class="pill seen">Seen in ${s.n} earlier case${s.n>1?"s":""} · last ${esc(fmtDate(s.last))}${s.tr?` (${esc(s.tr)})`:""}</span>` : `<span class="pill">First time seen</span>`}
-      </div></div>
-    <p>${esc(r.cause)}</p>
+        ${s ? `<span class="pill seen">Seen in ${s.n} earlier case${s.n>1?"s":""} · last ${esc(fmtDate(s.last))}</span>` : `<span class="pill">First time seen</span>`}</div></div>
+    <p>${esc(fill(r.cause))}</p>
     ${e.blocks.map(keyMeter).join("")}
-    ${r.fix && r.fix.length ? `<ol class="steps">${r.fix.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:""}
+    ${r.fix && r.fix.length ? `<ol class="steps">${r.fix.map(x=>`<li>${esc(fill(x))}</li>`).join("")}</ol>`:""}
     ${r.tx && r.tx.length ? `<div class="badges">${r.tx.map(t=>`<span class="pill">${esc(t)}</span>`).join("")}</div>`:""}
-    ${r.verify ? `<p class="hint"><b>To confirm:</b> ${esc(r.verify)}</p>`:""}
+    ${r.verify ? `<p class="hint"><b>To confirm:</b> ${esc(fill(r.verify))}</p>`:""}
     ${team && r.createdBy ? `<p class="hint">Approved by ${esc(nameOf(r.createdBy) || "a team member")}${r.createdAt?` on ${esc(fmtDate(r.createdAt))}`:""}.</p>`:""}
-    <details><summary>Evidence (${e.lines.length} line${e.lines.length>1?"s":""} shown)</summary><div style="display:grid;gap:6px;margin-top:8px">${e.lines.map(l=>`<div class="line">${esc(l)}</div>`).join("")}</div></details>
+    <details><summary>Evidence</summary><div style="display:grid;gap:6px;margin-top:8px">${e.lines.map(l=>`<div class="line">${esc(l)}</div>`).join("")}</div></details>
   </div></div>`;
 }
-
-function renderKnown(A){
-  const el = document.getElementById("secKnown");
-  const head = `<div class="ph"><h2 id="h-known"><span class="stage">3</span>Match against known errors</h2><span class="hint">Team-learned rules are checked before built-in ones.</span></div>`;
+function renderKnown(p, A){
+  const el = document.getElementById(p+"-known");
+  const head = `<div class="ph"><h2><span class="stage">3</span>Match against known errors</h2><span class="hint">Team-learned rules are checked before built-in ones.</span></div>`;
   if (!A.length){ el.innerHTML = head + `<div class="empty">Known errors and their fixes appear here.</div>`; return; }
   const groups = groupFindings(A), seen = seenStats();
   const causes = groups.filter(g=>g.rule.sev==="error"||g.rule.sev==="warning");
   const infos = groups.filter(g=>g.rule.sev==="info"), sym = groups.filter(g=>g.rule.sev==="symptom"), noise = groups.filter(g=>g.rule.sev==="noise");
   resolveNames(groups.map(g=>g.rule.createdBy).filter(Boolean));
   el.innerHTML = head +
-    (causes.length ? causes.map(g=>findingCard(g, seen)).join("") : `<div class="notice warn">No known root cause in these logs. Check the unknown errors below, or load the next step's log.</div>`) +
-    (infos.length ? infos.map(g=>findingCard(g, seen)).join("") : "") +
+    (causes.length ? causes.map(g=>findingCard(g, seen)).join("") : `<div class="notice warn">No known root cause in these logs. Check the unknown errors below${p==="abap"?", or load the next step's log":", or the target's own log"}.</div>`) +
+    infos.map(g=>findingCard(g, seen)).join("") +
     (sym.length ? `<details><summary>${sym.length} symptom line type${sym.length>1?"s":""} (they point to the causes above)</summary><div style="display:grid;gap:10px;margin-top:10px">${sym.map(g=>findingCard(g, seen)).join("")}</div></details>`:"") +
-    (noise.length ? `<details><summary>${noise.reduce((n,g)=>n+g.lines.length,0)}+ noise lines filtered out</summary><div style="display:grid;gap:6px;margin-top:10px">${noise.map(g=>`<div class="hint"><b>${esc(g.rule.title)}</b> (${g.objs.size} objects): ${esc(g.rule.cause)}</div>`).join("")}</div></details>`:"");
+    (noise.length ? `<details><summary>Noise lines filtered out</summary><div style="display:grid;gap:6px;margin-top:10px">${noise.map(g=>`<div class="hint"><b>${esc(g.rule.title)}</b> (${g.objs.size} objects): ${esc(g.rule.cause)}</div>`).join("")}</div></details>`:"");
 }
 
 /* ---------- Stage 4: unknown errors, user decides ---------- */
-function renderUnknown(A){
-  const el = document.getElementById("secUnknown");
-  const head = `<div class="ph"><h2 id="h-unk"><span class="stage">4</span>Unknown errors: your call</h2><span class="hint">AI only runs when you choose it. Nothing is remembered until you approve it.</span></div>`;
+function renderUnknown(p, A){
+  const ws = WS[p], el = document.getElementById(p+"-unk");
+  const head = `<div class="ph"><h2><span class="stage">4</span>Unknown errors: your call</h2><span class="hint">AI only runs when you choose it. Nothing is remembered until you approve it.</span></div>`;
   if (!A.length){ el.innerHTML = head + `<div class="empty">Error lines the knowledge base doesn't recognise appear here, with the choice to ask AI, mark as noise, or write the rule yourself.</div>`; return; }
   const groups = unknownGroups(A);
   const errorish = groups.filter(u=>u.errorish), other = groups.filter(u=>!u.errorish);
-  const list = S.showAllUnmatched ? [...errorish, ...other] : errorish;
-  const aiNote = S.sample ? "" : `<div class="notice">AI help isn't available in this view. You can still copy the prompt into Claude or Joule, or write the rule yourself.</div>`;
-  const dbNote = S.db ? "" : `<div class="notice warn">Shared memory isn't available in this view. Approved rules will only last until you close the page.</div>`;
-  const writeNote = S.canWrite === false ? `<div class="notice warn">You can view the knowledge base but not change it. Ask the owner for Contributor access to approve rules.</div>` : "";
-  const draftsOnly = Object.values(S.drafts).filter(d=>!groups.some(g=>g.key===d.key));
-  el.innerHTML = head + aiNote + dbNote + writeNote +
-    (errorish.length ? `<div class="row"><span>${errorish.length} unknown error line type${errorish.length>1?"s":""}.</span>${S.sample && errorish.length>1 ? `<button type="button" class="ai" id="btnAskAll" ${S.aiBusy.all?"disabled":""}>${S.aiBusy.all?"Asking AI…":`Ask AI about all ${Math.min(errorish.length,8)}`}</button>`:""}</div>`
+  const list = ws.showAll ? [...errorish, ...other] : errorish;
+  const draftsOnly = Object.values(ws.drafts).filter(d=>!groups.some(g=>g.key===d.key));
+  el.innerHTML = head +
+    (S.sample ? "" : `<div class="notice">AI help isn't available in this view. You can copy the prompt into Claude or Joule, or write the rule yourself.</div>`) +
+    (S.db ? "" : `<div class="notice warn">Shared memory isn't available in this view. Approved rules only last until you close the page.</div>`) +
+    (S.canWrite === false ? `<div class="notice warn">You can view the knowledge base but not change it. Ask the owner for Contributor access to approve rules.</div>` : "") +
+    (errorish.length ? `<div class="row"><span>${errorish.length} unknown error line type${errorish.length>1?"s":""}.</span>${S.sample && errorish.length>1 ? `<button type="button" class="ai" data-act="askall" ${ws.aiBusy.all?"disabled":""}>${ws.aiBusy.all?"Asking AI…":`Ask AI about all ${Math.min(errorish.length,8)}`}</button>`:""}</div>`
       : `<div class="notice">Every error line matched a known rule.</div>`) +
-    list.map(u=>unknownCard(u)).join("") +
-    draftsOnly.map(d=>draftCard(d)).join("") +
-    (other.length ? `<div class="row"><button type="button" class="link" id="btnToggleAll">${S.showAllUnmatched?"Hide":"Show"} ${other.length} other unrecognised line type${other.length>1?"s":""} (no error words)</button></div>`:"");
-  wireUnknown(groups);
+    list.map(u=>unknownCard(p, u)).join("") + draftsOnly.map(d=>draftCard(p, d)).join("") +
+    (other.length ? `<div class="row"><button type="button" class="link" data-act="toggle">${ws.showAll?"Hide":"Show"} ${other.length} other unrecognised line type${other.length>1?"s":""} (no error words or severity)</button></div>`:"");
+  const byKey = Object.fromEntries(groups.map(g=>[g.key,g]));
+  el.querySelectorAll("[data-act]").forEach(b=>b.onclick = ()=>onUnknownAction(p, b.dataset.act, b.dataset.k, byKey[b.dataset.k], b, groups, A));
+  el.querySelectorAll(".draft [data-f]").forEach(inp=>{
+    inp.oninput = ()=>{
+      const d = ws.drafts[inp.closest(".draft").dataset.k]; if (!d) return;
+      const f = inp.dataset.f;
+      d[f] = f==="fixSteps" ? inp.value.split("\n").map(s=>s.trim()).filter(Boolean) : f==="transactions" ? inp.value.split(",").map(s=>s.trim()).filter(Boolean) : inp.value;
+      if (f==="pattern"){ const out = inp.closest(".draft").querySelector("[data-test]"); try { const ok = new RegExp(inp.value,"i").test(d.line); out.textContent = ok?"Matches this line":"Doesn't match this line"; out.className = ok?"ok":"bad"; } catch { out.textContent="Not a valid pattern"; out.className="bad"; } }
+    };
+  });
 }
-
-function unknownCard(u){
-  const d = S.drafts[u.key];
-  const busy = S.aiBusy[u.key];
-  return `<div class="unk" id="u-${u.key}">
-    <div class="row between"><span class="eyebrow">${esc(u.log.letter)} · ${esc(STEPS[u.log.letter]||"")} · seen ${u.count}× in ${esc(u.log.name)}</span></div>
+function unknownCard(p, u){
+  const ws = WS[p], d = ws.drafts[u.key], busy = ws.aiBusy[u.key];
+  return `<div class="unk">
+    <span class="eyebrow">${esc(u.log.stepLabel)} · seen ${u.count}× in ${esc(u.log.name)}</span>
     <div class="line">${esc(u.line)}</div>
     <details><summary>Context</summary><div class="line" style="white-space:pre-wrap;margin-top:8px">${u.context.map(esc).join("\n")}</div></details>
-    ${d ? draftCard(d) : `<div class="row">
+    ${d ? draftCard(p, d) : `<div class="row">
       ${S.sample ? `<button type="button" class="ai" data-act="ask" data-k="${u.key}" ${busy?"disabled":""}>${busy?"Asking AI…":"Ask AI to diagnose"}</button>` : `<button type="button" data-act="copyprompt" data-k="${u.key}">Copy AI prompt</button>`}
       <button type="button" data-act="noise" data-k="${u.key}">Mark as noise</button>
       <button type="button" data-act="manual" data-k="${u.key}">Write the rule myself</button>
-      <span class="toast" id="t-${u.key}" hidden>Prompt copied</span>
-    </div>`}
+      <span class="toast" id="t-${u.key}" hidden>Prompt copied</span></div>`}
   </div>`;
 }
-
-function draftCard(d){
-  const k = d.key;
-  let test = "";
-  try { const re = new RegExp(d.pattern, "i"); test = re.test(d.line) ? `<span class="ok">Matches this line</span>` : `<span class="bad">Doesn't match this line</span>`; }
-  catch { test = `<span class="bad">Not a valid pattern</span>`; }
+function draftCard(p, d){
+  const k = d.key, cats = PLAT[p].cats;
+  let ok = false, valid = true; try { ok = new RegExp(d.pattern,"i").test(d.line); } catch { valid = false; }
   const origin = d.source==="ai" ? `AI draft${d.confidence?` · confidence ${esc(d.confidence)}`:""}` : d.source==="noise" ? "Noise rule" : "Your rule";
   return `<div class="draft" data-k="${k}">
     <div class="row between"><b>${origin}</b><span class="hint">Review and edit before approving.</span></div>
     ${d.error ? `<div class="notice warn">${esc(d.error)}</div>`:""}
     <div class="formgrid">
       <label class="f wide">Title<input type="text" id="d-title-${k}" data-f="title" value="${esc(d.title)}"></label>
-      <label class="f">Category<select id="d-cat-${k}" data-f="category">${CATS.map(c=>`<option ${c===d.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
-      <label class="f">Severity<select id="d-sev-${k}" data-f="severity">${["error","warning","info","symptom","noise"].map(s=>`<option ${s===d.severity?"selected":""}>${s}</option>`).join("")}</select></label>
-      <label class="f">Transactions (comma-separated)<input type="text" id="d-tx-${k}" data-f="transactions" value="${esc((d.transactions||[]).join(", "))}"></label>
+      <label class="f">Category<select id="d-cat-${k}" data-f="category">${cats.map(c=>`<option ${c===d.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+      <label class="f">Severity<select id="d-sev-${k}" data-f="severity">${SEVS.map(s=>`<option ${s===d.severity?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label class="f">Where to look (comma-separated)<input type="text" id="d-tx-${k}" data-f="transactions" value="${esc((d.transactions||[]).join(", "))}"></label>
       <label class="f wide">Root cause<textarea id="d-cause-${k}" data-f="rootCause" style="font-family:var(--f-body);min-height:70px">${esc(d.rootCause)}</textarea></label>
       <label class="f wide">Fix steps (one per line)<textarea id="d-fix-${k}" data-f="fixSteps" style="font-family:var(--f-body)">${esc((d.fixSteps||[]).join("\n"))}</textarea></label>
       <label class="f wide">How to confirm<input type="text" id="d-ver-${k}" data-f="verify" value="${esc(d.verify||"")}"></label>
-      <label class="f wide">Match pattern (regular expression; first group = object name) · ${test}<input type="text" id="d-pat-${k}" data-f="pattern" class="mono" value="${esc(d.pattern)}"></label>
+      <label class="f wide">Match pattern (regular expression; first group = object name) · <span data-test class="${valid&&ok?"ok":"bad"}">${!valid?"Not a valid pattern":ok?"Matches this line":"Doesn't match this line"}</span><input type="text" id="d-pat-${k}" data-f="pattern" class="mono" value="${esc(d.pattern)}"></label>
     </div>
     <div class="row">
       ${S.canWrite===false ? "" : `<button type="button" class="primary" data-act="approve" data-k="${k}">Approve and remember</button>`}
@@ -614,41 +767,23 @@ function draftCard(d){
     </div>
   </div>`;
 }
-
-function wireUnknown(groups){
-  const el = document.getElementById("secUnknown");
-  const byKey = Object.fromEntries(groups.map(g=>[g.key,g]));
-  el.querySelectorAll("[data-act]").forEach(b=>b.onclick = ()=>onUnknownAction(b.dataset.act, b.dataset.k, byKey[b.dataset.k], b));
-  el.querySelectorAll(".draft [data-f]").forEach(inp=>{
-    inp.oninput = ()=>{
-      const k = inp.closest(".draft").dataset.k, d = S.drafts[k]; if (!d) return;
-      const f = inp.dataset.f;
-      d[f] = (f==="fixSteps") ? inp.value.split("\n").map(s=>s.trim()).filter(Boolean)
-           : (f==="transactions") ? inp.value.split(",").map(s=>s.trim()).filter(Boolean) : inp.value;
-      if (f==="pattern"){ const lab = inp.closest("label"); try { const ok = new RegExp(inp.value,"i").test(d.line); lab.firstChild.textContent = "Match pattern (regular expression; first group = object name) · "; lab.querySelector("span")?.remove(); lab.insertBefore(Object.assign(document.createElement("span"),{className:ok?"ok":"bad",textContent:ok?"Matches this line":"Doesn't match this line"}), inp); } catch { } }
-    };
-  });
-  const all = document.getElementById("btnAskAll"); if (all) all.onclick = ()=>askAll(groups.filter(g=>g.errorish && !S.drafts[g.key]).slice(0,8));
-  const tog = document.getElementById("btnToggleAll"); if (tog) tog.onclick = ()=>{ S.showAllUnmatched = !S.showAllUnmatched; render(); };
-}
-
-function baseDraft(u, source){
-  return {key:u.key, line:u.line, sig:u.sig, step:u.log.letter, source, title:"", category:"Symptom", severity:"error",
+function baseDraft(p, u, source){
+  return {key:u.key, line:u.line, sig:u.sig, platform:p, source, title:"", category:"Symptom", severity:"error",
     rootCause:"", fixSteps:[], transactions:[], verify:"", confidence:"", pattern:patternFromSignature(u.sig)};
 }
-
-function aiPrompt(items, A){
-  const known = groupFindings(A || analyzeAll()).filter(g=>g.rule.sev==="error"||g.rule.sev==="warning").map(g=>`- ${g.rule.title}${g.objs.size?` (${[...g.objs].slice(0,5).join(", ")})`:""}`).join("\n") || "(none)";
+function aiPrompt(p, items, A){
+  const P = PLAT[p];
+  const known = groupFindings(A).filter(g=>g.rule.sev==="error"||g.rule.sev==="warning").map(g=>`- ${g.rule.title}${g.objs.size?` (${[...g.objs].slice(0,5).join(", ")})`:""}`).join("\n") || "(none)";
   const one = items.length === 1;
-  const shape = `{"key": string (copy from input), "title": short name of this error type, max 8 words, "category": one of ${JSON.stringify(CATS)}, "severity": "error"|"warning"|"info"|"symptom"|"noise", "rootCause": 1-3 sentences, "fixSteps": [ordered steps, one sentence each, naming transactions or reports], "transactions": ["SE11", ...], "verify": "what to check in the system to confirm", "confidence": "high"|"medium"|"low", "pattern": "JavaScript regular expression, case-insensitive, that matches this message type in general (object names, numbers and dates replaced by patterns) with exactly ONE capture group for the affected object"}`;
-  return `You are a senior SAP Basis consultant for SAP S/4HANA on the ABAP platform. Our rule library doesn't recognise the transport log message${one?"":"s"} below. Diagnose ${one?"it":"each one"}.
-Rules: be specific to SAP CTS/tp/R3trans behaviour. If unsure, say so in rootCause and set confidence to "low". Don't invent SAP Note numbers. "symptom" means a summary line that points to another cause; "noise" means safe to ignore.
+  const shape = `{"key": string (copy from input), "title": short name of this error type, max 8 words, "category": one of ${JSON.stringify(P.cats)}, "severity": "error"|"warning"|"info"|"symptom"|"noise", "rootCause": 1-3 sentences, "fixSteps": [ordered steps, one sentence each, naming the transaction, app, cockpit screen or command], "transactions": [where to look, e.g. "SE11" or "Integration Suite → Design"], "verify": "what to check to confirm", "confidence": "high"|"medium"|"low", "pattern": "JavaScript regular expression, case-insensitive, that matches this message type in general (object names, IDs, numbers and dates replaced by patterns) with exactly ONE capture group for the affected object"}`;
+  return `You are ${P.aiRole} Our rule library doesn't recognise the transport log message${one?"":"s"} below. Diagnose ${one?"it":"each one"}.
+If unsure, say so in rootCause and set confidence to "low". Don't invent SAP Note numbers. "symptom" means a summary line that points to another cause; "noise" means safe to ignore.
 
 Known findings already identified in the same logs:
 ${known}
 
 ${items.map(u=>`--- key: ${u.key}
-Request ${u.log.tr||"?"}, target ${u.log.target||"?"}, step ${u.log.letter} (${STEPS[u.log.letter]||"unknown"}), step return code ${u.log.rc ?? "?"}
+${P.aiLog(u.log)}
 Message: ${u.line}
 Surrounding lines:
 ${u.context.join("\n")}`).join("\n\n")}
@@ -656,143 +791,144 @@ ${u.context.join("\n")}`).join("\n\n")}
 Reply with only ${one?"one JSON object":"a JSON array of objects, one per key"} of this shape:
 ${shape}`;
 }
-
-function applyAi(u, res){
-  const d = baseDraft(u, "ai");
-  Object.assign(d, {
-    title: String(res.title||"").slice(0,120), category: CATS.includes(res.category) ? res.category : "Symptom",
-    severity: ["error","warning","info","symptom","noise"].includes(res.severity) ? res.severity : "error",
-    rootCause: String(res.rootCause||""), fixSteps: Array.isArray(res.fixSteps) ? res.fixSteps.map(String).slice(0,10) : [],
-    transactions: Array.isArray(res.transactions) ? res.transactions.map(String).slice(0,8) : [],
-    verify: String(res.verify||""), confidence: String(res.confidence||"")
-  });
+function applyAi(p, u, res){
+  const d = baseDraft(p, u, "ai"), cats = PLAT[p].cats;
+  Object.assign(d, {title:String(res.title||"").slice(0,120), category: cats.includes(res.category) ? res.category : "Symptom",
+    severity: SEVS.includes(res.severity) ? res.severity : "error", rootCause:String(res.rootCause||""),
+    fixSteps: Array.isArray(res.fixSteps) ? res.fixSteps.map(String).slice(0,10) : [], transactions: Array.isArray(res.transactions) ? res.transactions.map(String).slice(0,8) : [],
+    verify:String(res.verify||""), confidence:String(res.confidence||"")});
   if (typeof res.pattern === "string"){ try { if (new RegExp(res.pattern,"i").test(u.line)) d.pattern = res.pattern; } catch {} }
-  S.drafts[u.key] = d;
+  WS[p].drafts[u.key] = d;
 }
 const SAMPLE_ERR = {not_granted:"AI use wasn't allowed for this page. You can allow it from the page's permissions.", rate_limited:"Too many AI requests right now. Try again in a minute.", session_expired:"Sign in again to use AI.", refused:"AI declined this input.", invalid_json:"AI answered in an unexpected format. Try again.", prompt_too_large:"The log context is too large; try one line at a time."};
-function aiFail(e){ return SAMPLE_ERR[e?.code] || "The AI request didn't complete. Try again."; }
+const aiFail = e => SAMPLE_ERR[e?.code] || "The AI request didn't complete. Try again.";
+const HIDE_AI = ["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"];
 
-async function askOne(u){
-  S.aiBusy[u.key] = true; render();
-  try { const res = await S.sample.json(aiPrompt([u])); applyAi(u, Array.isArray(res)?res[0]||{}:res||{}); }
-  catch(e){ const d = baseDraft(u,"ai"); d.error = aiFail(e); S.drafts[u.key] = d; if (["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e?.code)) S.sample = null; }
-  finally { delete S.aiBusy[u.key]; render(); }
-}
-async function askAll(items){
-  if (!items.length) return;
-  S.aiBusy.all = true; items.forEach(u=>S.aiBusy[u.key]=true); render();
-  try {
-    const res = await S.sample.json(aiPrompt(items));
-    const arr = Array.isArray(res) ? res : [res];
-    items.forEach(u=>{ const r = arr.find(x=>x && x.key===u.key); if (r) applyAi(u, r); });
-  } catch(e){ items.forEach(u=>{ const d=baseDraft(u,"ai"); d.error=aiFail(e); S.drafts[u.key]=d; }); }
-  finally { delete S.aiBusy.all; items.forEach(u=>delete S.aiBusy[u.key]); render(); }
-}
-
-async function onUnknownAction(act, k, u, btn){
-  if (act==="ask") return askOne(u);
-  if (act==="copyprompt"){
-    const t = aiPrompt([u]);
-    try { await navigator.clipboard.writeText(t); const s=document.getElementById("t-"+k); if (s){ s.hidden=false; setTimeout(()=>s.hidden=true,1500); } }
-    catch { const ta = document.getElementById("paste"); ta.value = t; ta.focus(); ta.select(); }
+async function onUnknownAction(p, act, k, u, btn, groups, A){
+  const ws = WS[p];
+  if (act==="toggle"){ ws.showAll = !ws.showAll; return render(); }
+  if (act==="askall"){
+    const items = groups.filter(g=>g.errorish && !ws.drafts[g.key]).slice(0,8); if (!items.length) return;
+    ws.aiBusy.all = true; items.forEach(x=>ws.aiBusy[x.key]=true); render();
+    try { const res = await S.sample.json(aiPrompt(p, items, A)); const arr = Array.isArray(res)?res:[res]; items.forEach(x=>{ const r = arr.find(y=>y && y.key===x.key); if (r) applyAi(p, x, r); }); }
+    catch(e){ items.forEach(x=>{ const d=baseDraft(p,x,"ai"); d.error=aiFail(e); ws.drafts[x.key]=d; }); if (HIDE_AI.includes(e?.code)) S.sample=null; }
+    finally { delete ws.aiBusy.all; items.forEach(x=>delete ws.aiBusy[x.key]); render(); }
     return;
   }
-  if (act==="noise"){ const d = baseDraft(u,"noise"); d.severity="noise"; d.category="Noise"; d.title="Ignore: "+u.line.slice(0,60); d.rootCause="Marked as safe to ignore by the team."; S.drafts[k]=d; render(); return; }
-  if (act==="manual"){ S.drafts[k] = baseDraft(u,"manual"); render(); return; }
-  const d = S.drafts[k]; if (!d) return;
-  if (act==="discard"){ delete S.drafts[k]; render(); return; }
-  if (!d.title.trim()){ d.error = "Give the rule a title before saving."; render(); return; }
-  try { new RegExp(d.pattern,"i"); } catch { d.error = "The match pattern isn't a valid regular expression."; render(); return; }
-  const rule = {title:d.title.trim(), category:d.category, severity:d.severity, rootCause:d.rootCause, fixSteps:d.fixSteps, transactions:d.transactions,
-    verify:d.verify, pattern:d.pattern, step:d.step, source:d.source, confidence:d.confidence||"", example:d.line.slice(0,300),
-    createdBy:S.me||null, createdAt:new Date().toISOString()};
-  if (act==="once" || !S.db){ S.session.push({...rule, id:"s-"+k}); delete S.drafts[k]; render(); return; }
+  if (act==="ask"){
+    ws.aiBusy[k] = true; render();
+    try { const res = await S.sample.json(aiPrompt(p, [u], A)); applyAi(p, u, Array.isArray(res)?res[0]||{}:res||{}); }
+    catch(e){ const d = baseDraft(p,u,"ai"); d.error = aiFail(e); ws.drafts[k] = d; if (HIDE_AI.includes(e?.code)) S.sample = null; }
+    finally { delete ws.aiBusy[k]; render(); }
+    return;
+  }
+  if (act==="copyprompt"){
+    const t = aiPrompt(p, [u], A);
+    try { await navigator.clipboard.writeText(t); const s=document.getElementById("t-"+k); if (s){ s.hidden=false; setTimeout(()=>s.hidden=true,1500); } }
+    catch { const ta = document.getElementById(p+"-paste"); ta.value = t; ta.focus(); ta.select(); }
+    return;
+  }
+  if (act==="noise"){ const d = baseDraft(p,u,"noise"); Object.assign(d,{severity:"noise", category:"Noise", title:"Ignore: "+u.line.slice(0,60), rootCause:"Marked as safe to ignore by the team."}); ws.drafts[k]=d; return render(); }
+  if (act==="manual"){ ws.drafts[k] = baseDraft(p,u,"manual"); return render(); }
+  const d = ws.drafts[k]; if (!d) return;
+  if (act==="discard"){ delete ws.drafts[k]; return render(); }
+  if (!d.title.trim()){ d.error = "Give the rule a title before saving."; return render(); }
+  try { new RegExp(d.pattern,"i"); } catch { d.error = "The match pattern isn't a valid regular expression."; return render(); }
+  const rule = {platform:p, title:d.title.trim(), category:d.category, severity:d.severity, rootCause:d.rootCause, fixSteps:d.fixSteps, transactions:d.transactions,
+    verify:d.verify, pattern:d.pattern, source:d.source, confidence:d.confidence||"", example:d.line.slice(0,300), createdBy:S.me||null, createdAt:new Date().toISOString()};
+  if (act==="once" || !S.db){ S.session.push({...rule, id:"s-"+k}); delete ws.drafts[k]; return render(); }
   if (act==="approve"){
     btn.disabled = true; btn.textContent = "Saving…";
-    try { await S.db.collection("rules").add(rule); delete S.drafts[k]; }
+    try { await S.db.collection("rules").add(rule); delete ws.drafts[k]; }
     catch(e){ d.error = e?.code==="invalid_argument" ? "You don't have permission to change the knowledge base." : e?.code==="quota_exceeded" ? "The knowledge base is full. Delete unused rules first." : "Couldn't save the rule. Try again."; if (e?.code==="invalid_argument") S.canWrite=false; }
     render();
   }
 }
 
 /* ---------- Stage 5: remember ---------- */
-function caseId(A){
-  const trs = [...new Set(A.map(l=>l.tr).filter(Boolean))].sort();
-  const sys = [...new Set(A.map(l=>l.target).filter(Boolean))].sort();
-  if (!trs.length) return "";
-  return (trs.join("+")+"_"+sys.join("+")).replace(/[^A-Za-z0-9_+.-]/g,"").slice(0,180);
+function caseId(p, A){
+  if (p==="btp"){ const a = A.map(l=>l.h?.action).filter(Boolean).map(x=>x.replace(/\D/g,"")); return a.length ? ("ctms_"+a.sort().join("+")).slice(0,180) : ""; }
+  const trs = [...new Set(A.map(l=>l.tr).filter(Boolean))].sort(), sys = [...new Set(A.map(l=>l.target).filter(Boolean))].sort();
+  return trs.length ? (trs.join("+")+"_"+sys.join("+")).replace(/[^A-Za-z0-9_+.-]/g,"").slice(0,180) : "";
 }
-function ticketText(A){
-  const out = [];
-  A.forEach(l=>out.push(`${l.tr||"?"} → ${l.target||"?"} · step ${l.letter} (${STEPS[l.letter]||""}) · RC ${l.rc ?? "?"}: ${rcInfo(l.rc).text}`));
+function ticketText(p, A){
+  const P = PLAT[p], out = [];
+  A.forEach(l=>{
+    if (p==="abap") out.push(`${l.tr||"?"} → ${l.target||"?"} · step ${l.stepLabel} · RC ${l.rc ?? "?"}: ${P.rcInfo(l.rc).text}`);
+    else { out.push(`Cloud Transport action ${l.h.action||"?"} (${CTMS_TYPES[l.h.type]||l.h.type||""}) on node ${l.h.node||"?"} · status ${l.rc ?? "?"}: ${P.rcInfo(l.rc).text}`);
+      out.push(`Request: ${l.tr||"?"}${l.reqs[0]?.id?` (ID ${l.reqs[0].id})`:""} · content ${l.facts.entity||l.facts.contentType||"?"} · via ${l.facts.mode||"?"}`);
+      l.insights.forEach(i=>out.push(`Note: ${i.title}. ${i.text}`)); }
+  });
   out.push("");
   groupFindings(A).filter(g=>g.rule.sev==="error"||g.rule.sev==="warning").forEach(g=>{
+    const obj = [...g.objs][0] || "the package", fill = t => String(t).replace(/\{obj\}/g, obj);
     out.push(`${g.rule.title}${g.objs.size?` (${[...g.objs].join(", ")})`:""} [${g.rule.source==="builtin"?"built-in rule":"team rule"}]`);
-    out.push(`  Cause: ${g.rule.cause}`);
-    (g.rule.fix||[]).forEach((f,i)=>out.push(`  ${i+1}. ${f}`));
+    out.push(`  Cause: ${fill(g.rule.cause)}`);
+    (g.rule.fix||[]).forEach((f,i)=>out.push(`  ${i+1}. ${fill(f)}`));
     out.push("");
   });
-  const unk = unknownGroups(A).filter(u=>u.errorish && !S.drafts[u.key]);
+  const unk = unknownGroups(A).filter(u=>u.errorish && !WS[p].drafts[u.key]);
   if (unk.length){ out.push("Not yet diagnosed:"); unk.forEach(u=>out.push(`  - ${u.line}`)); }
   return out.join("\n").trim();
 }
-function renderRemember(A){
-  const el = document.getElementById("secRemember");
-  const head = `<div class="ph"><h2 id="h-rem"><span class="stage">5</span>Remember the case</h2><span class="hint">Saved cases power "seen before" and the history view.</span></div>`;
+function renderRemember(p, A){
+  const ws = WS[p], el = document.getElementById(p+"-rem");
+  const head = `<div class="ph"><h2><span class="stage">5</span>Remember the case</h2><span class="hint">Saved cases power "seen before" and the history view.</span></div>`;
   if (!A.length){ el.innerHTML = head + `<div class="empty">Once logs are analysed, save the case for the team and copy the ticket text.</div>`; return; }
-  const id = caseId(A), exists = S.cases.find(c=>c.id===id);
-  el.innerHTML = head + `
-    <div class="row">
-      ${S.db && id && S.canWrite!==false ? `<button type="button" class="primary" id="btnSaveCase">${exists?"Update saved case":"Save case to history"}</button>` : ""}
-      <button type="button" id="btnCopyTicket">Copy ticket text</button>
-      <span class="toast" id="caseMsg" hidden></span>
-    </div>
-    ${!id ? `<p class="hint">No transport request number found in these logs, so the case can't be saved.</p>` : exists ? `<p class="hint">This request was analysed before on ${esc(fmtDate(exists.at))}.</p>` : ""}
-    <textarea class="ticket" id="ticket" readonly>${esc(ticketText(A))}</textarea>`;
-  const sc = document.getElementById("btnSaveCase");
-  if (sc) sc.onclick = async ()=>{
-    sc.disabled = true;
+  const id = caseId(p, A), exists = S.cases.find(c=>c.id===id);
+  el.innerHTML = head + `<div class="row">
+      ${S.db && id && S.canWrite!==false ? `<button type="button" class="primary" data-save="1">${exists?"Update saved case":"Save case to history"}</button>` : ""}
+      <button type="button" data-copy="1">Copy ticket text</button><span class="toast" data-msg hidden></span></div>
+    ${!id ? `<p class="hint">No request or action number found in these logs, so the case can't be saved.</p>` : exists ? `<p class="hint">This was analysed before on ${esc(fmtDate(exists.at))}.</p>` : ""}
+    <textarea class="ticket" readonly aria-label="Ticket text">${esc(ticketText(p, A))}</textarea>`;
+  const msg = el.querySelector("[data-msg]"), show = (t, cls="toast")=>{ msg.textContent=t; msg.className=cls; msg.hidden=false; };
+  const sb = el.querySelector("[data-save]");
+  if (sb) sb.onclick = async ()=>{
+    sb.disabled = true;
     const groups = groupFindings(A).filter(g=>g.rule.sev!=="noise");
-    const body = {tr:[...new Set(A.map(l=>l.tr).filter(Boolean))].join(", "), system:[...new Set(A.map(l=>l.target).filter(Boolean))].join(", "),
-      rc: Math.max(...A.map(l=>l.rc ?? 0)), steps:A.map(l=>({step:l.letter, rc:l.rc})),
+    const body = {platform:p,
+      tr: p==="btp" ? A.map(l=>l.tr).filter(Boolean).join(", ") : [...new Set(A.map(l=>l.tr).filter(Boolean))].join(", "),
+      system: [...new Set(A.map(l=>l.target).filter(Boolean))].join(", "),
+      rc: Math.max(...A.map(l=>l.rc ?? 0)), steps: A.map(l=>({step:l.stepLabel, rc:l.rc})),
       ruleKeys: groups.map(g=>ruleKey(g.rule)),
       findings: groups.slice(0,60).map(g=>({key:ruleKey(g.rule), title:g.rule.title, sev:g.rule.sev, cat:g.rule.cat, objs:[...g.objs].slice(0,40)})),
       unknown: unknownGroups(A).filter(u=>u.errorish).length, at:new Date().toISOString(), by:S.me||null};
-    try { await S.db.doc("cases/"+id).set(body); S.lastSaved = id; const m=document.getElementById("caseMsg"); if (m){ m.textContent="Case saved"; m.hidden=false; } }
-    catch(e){ const m=document.getElementById("caseMsg"); if (m){ m.textContent = e?.code==="invalid_argument" ? "You don't have permission to save cases." : "Couldn't save the case. Try again."; m.className="bad"; m.hidden=false; } sc.disabled=false; }
-    renderPipe(analyzeAll());
+    try { await S.db.doc("cases/"+id).set(body); ws.lastSaved = id; show("Case saved"); }
+    catch(e){ show(e?.code==="invalid_argument" ? "You don't have permission to save cases." : "Couldn't save the case. Try again.", "bad"); sb.disabled=false; }
+    renderPipe(p, analyzeWs(p));
   };
-  document.getElementById("btnCopyTicket").onclick = async ()=>{
-    const ta = document.getElementById("ticket");
-    try { await navigator.clipboard.writeText(ta.value); const m=document.getElementById("caseMsg"); m.textContent="Copied"; m.className="toast"; m.hidden=false; } catch { ta.focus(); ta.select(); }
-  };
+  el.querySelector("[data-copy]").onclick = async ()=>{ const ta = el.querySelector("textarea"); try { await navigator.clipboard.writeText(ta.value); show("Copied"); } catch { ta.focus(); ta.select(); } };
 }
 
 /* =====================================================================
    Knowledge base view
    ===================================================================== */
 let kbEdit = null, kbConfirm = null;
+const platLabel = p => p==="btp" ? "BTP" : "S/4HANA";
 function renderKb(){
-  const el = document.getElementById("viewKb");
-  const seen = seenStats();
+  const el = document.getElementById("view-kb"), seen = seenStats();
   const team = [...S.learned.map(r=>({...r, _team:"shared"})), ...S.session.map(r=>({...r, _team:"session"}))];
   const rows = [
-    ...team.map(r=>({key:"t:"+r.id, title:r.title, cat:r.category, sev:r.severity, src:r._team==="session"?"This session only":(r.source==="ai"?"Team · AI-assisted":r.source==="noise"?"Team · noise":"Team"), pattern:r.pattern, cause:r.rootCause, team:r})),
-    ...BUILTIN.map(r=>({key:"b:"+r.id, title:r.title, cat:r.cat, sev:r.sev, src:"Built-in", pattern:r.re.source, cause:r.cause}))
-  ].filter(r=>(!S.kbCat || r.cat===S.kbCat) && (!S.kbFilter || (r.title+" "+r.cause+" "+r.pattern).toLowerCase().includes(S.kbFilter.toLowerCase())));
+    ...team.map(r=>({key:"t:"+r.id, plat:r.platform||"abap", title:r.title, cat:r.category, sev:r.severity, src:r._team==="session"?"This session only":(r.source==="ai"?"Team · AI-assisted":r.source==="noise"?"Team · noise":"Team"), pattern:r.pattern, cause:r.rootCause, team:r})),
+    ...BUILTIN_ABAP.map(r=>({key:"b:"+r.id, plat:"abap", title:r.title, cat:r.cat, sev:r.sev, src:"Built-in", pattern:r.re.source, cause:r.cause})),
+    ...BUILTIN_BTP.map(r=>({key:"b:"+r.id, plat:"btp", title:r.title, cat:r.cat, sev:r.sev, src:"Built-in", pattern:r.re.source, cause:r.cause.replace(/\{obj\}/g,"<package>")}))
+  ];
+  const shown = rows.filter(r=>(!S.kbPlat || r.plat===S.kbPlat) && (!S.kbCat || r.cat===S.kbCat) && (!S.kbFilter || (r.title+" "+r.cause+" "+r.pattern).toLowerCase().includes(S.kbFilter.toLowerCase())));
   resolveNames(S.learned.map(r=>r.createdBy).filter(Boolean));
-  const byCat = CATS.map(c=>({c, n:[...BUILTIN.filter(r=>r.cat===c), ...team.filter(r=>r.category===c)].length})).filter(x=>x.n);
+  const catsHere = [...new Set(rows.filter(r=>!S.kbPlat || r.plat===S.kbPlat).map(r=>r.cat))];
   el.innerHTML = `<section class="panel" aria-labelledby="h-kbv">
-    <div class="ph"><h2 id="h-kbv">Knowledge base</h2><div class="row"><button type="button" id="btnExport">Copy as JSON</button><span class="toast" id="kbMsg" hidden></span></div></div>
-    <p class="hint">${BUILTIN.length} built-in rules, ${S.learned.length} learned by the team${S.session.length?`, ${S.session.length} for this session only`:""}. Team rules are checked first, so a team rule can refine a built-in one.</p>
-    <div class="row">${byCat.map(x=>`<button type="button" class="${S.kbCat===x.c?"primary":""}" data-cat="${esc(x.c)}">${esc(x.c)} · ${x.n}</button>`).join("")}${S.kbCat?`<button type="button" class="link" data-cat="">All categories</button>`:""}</div>
+    <div class="ph"><h2 id="h-kbv">Knowledge base</h2><div class="row"><button type="button" id="btnExport">Copy team rules as JSON</button><span class="toast" id="kbMsg" hidden></span></div></div>
+    <p class="hint">${BUILTIN_ABAP.length} built-in S/4HANA rules, ${BUILTIN_BTP.length} built-in BTP rules, ${S.learned.length} learned by the team${S.session.length?`, ${S.session.length} for this session only`:""}. Team rules are checked first.</p>
+    <div class="row">${[["","All platforms"],["abap","S/4HANA"],["btp","BTP"]].map(([v,l])=>`<button type="button" class="${S.kbPlat===v?"primary":""}" data-plat="${v}">${l}</button>`).join("")}</div>
+    <div class="row">${catsHere.map(c=>`<button type="button" class="${S.kbCat===c?"primary":""}" data-cat="${esc(c)}">${esc(c)} · ${rows.filter(r=>r.cat===c && (!S.kbPlat||r.plat===S.kbPlat)).length}</button>`).join("")}${S.kbCat?`<button type="button" class="link" data-cat="">All categories</button>`:""}</div>
     <input type="search" id="kbSearch" placeholder="Search rules…" value="${esc(S.kbFilter)}" aria-label="Search rules">
     ${kbEdit ? kbEditForm(kbEdit) : ""}
-    <div class="tablewrap"><table><thead><tr><th>Rule</th><th>Category</th><th>Severity</th><th>Source</th><th>Seen</th><th></th></tr></thead><tbody>
-    ${rows.map(r=>{ const s=seen[r.key]; return `<tr><td><b>${esc(r.title)}</b><div class="hint">${esc(r.cause)}</div><div class="hint mono" style="overflow-wrap:anywhere">${esc(r.pattern)}</div>${r.team&&r.team.createdBy?`<div class="hint">Approved by ${esc(nameOf(r.team.createdBy)||"a team member")}${r.team.createdAt?`, ${esc(fmtDate(r.team.createdAt))}`:""}</div>`:""}</td>
-      <td>${esc(r.cat)}</td><td><span class="pill ${esc(r.sev)}">${esc(r.sev)}</span></td><td>${esc(r.src)}</td><td class="m">${s?`${s.n}× · ${esc(fmtDate(s.last))}`:"–"}</td>
-      <td>${r.team && r.team._team==="shared" && S.canWrite!==false ? (kbConfirm===r.team.id ? `<div class="row"><button type="button" class="danger" data-del="${esc(r.team.id)}">Delete rule</button><button type="button" data-cancel="1">Keep</button></div>` : `<div class="row"><button type="button" data-edit="${esc(r.team.id)}">Edit</button><button type="button" data-ask="${esc(r.team.id)}">Delete</button></div>`) : ""}</td></tr>`; }).join("") || `<tr><td colspan="6" class="hint">No rules match.</td></tr>`}
+    <div class="tablewrap"><table><thead><tr><th>Rule</th><th>Platform</th><th>Category</th><th>Severity</th><th>Source</th><th>Seen</th><th></th></tr></thead><tbody>
+    ${shown.map(r=>{ const s=seen[r.key]; return `<tr><td><b>${esc(r.title)}</b><div class="hint">${esc(r.cause)}</div><div class="hint mono" style="overflow-wrap:anywhere">${esc(r.pattern)}</div>${r.team&&r.team.createdBy?`<div class="hint">Approved by ${esc(nameOf(r.team.createdBy)||"a team member")}${r.team.createdAt?`, ${esc(fmtDate(r.team.createdAt))}`:""}</div>`:""}</td>
+      <td>${platLabel(r.plat)}</td><td>${esc(r.cat)}</td><td><span class="pill ${esc(r.sev)}">${esc(r.sev)}</span></td><td>${esc(r.src)}</td><td class="m">${s?`${s.n}× · ${esc(fmtDate(s.last))}`:"–"}</td>
+      <td>${r.team && r.team._team==="shared" && S.canWrite!==false ? (kbConfirm===r.team.id ? `<div class="row"><button type="button" class="danger" data-del="${esc(r.team.id)}">Delete rule</button><button type="button" data-cancel="1">Keep</button></div>` : `<div class="row"><button type="button" data-edit="${esc(r.team.id)}">Edit</button><button type="button" data-ask="${esc(r.team.id)}">Delete</button></div>`) : ""}</td></tr>`; }).join("") || `<tr><td colspan="7" class="hint">No rules match.</td></tr>`}
     </tbody></table></div></section>`;
+  el.querySelectorAll("[data-plat]").forEach(b=>b.onclick=()=>{ S.kbPlat=b.dataset.plat; S.kbCat=""; renderKb(); });
   el.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{ S.kbCat=b.dataset.cat; renderKb(); });
   const s = document.getElementById("kbSearch"); s.oninput = ()=>{ S.kbFilter=s.value; const pos=s.selectionStart; renderKb(); const n=document.getElementById("kbSearch"); n.focus(); n.setSelectionRange(pos,pos); };
   el.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>{ kbConfirm=b.dataset.ask; renderKb(); });
@@ -802,16 +938,17 @@ function renderKb(){
   document.getElementById("btnExport").onclick = async ()=>{
     const json = JSON.stringify({exportedAt:new Date().toISOString(), rules:S.learned.map(({id,createdBy,...r})=>r)}, null, 2);
     const m = document.getElementById("kbMsg");
-    try { await navigator.clipboard.writeText(json); m.textContent = `Copied ${S.learned.length} team rules`; m.hidden=false; } catch { m.textContent="Copy isn't allowed here"; m.hidden=false; }
+    try { await navigator.clipboard.writeText(json); m.textContent = `Copied ${S.learned.length} team rules`; } catch { m.textContent="Copy isn't allowed here"; } m.hidden=false;
   };
   if (kbEdit) wireKbEdit();
 }
 function kbEditForm(r){
-  return `<div class="draft kbedit"><b>Edit team rule</b><div class="formgrid">
+  const cats = PLAT[r.platform||"abap"].cats;
+  return `<div class="draft kbedit"><b>Edit team rule (${platLabel(r.platform||"abap")})</b><div class="formgrid">
     <label class="f wide">Title<input type="text" id="e-title" value="${esc(r.title)}"></label>
-    <label class="f">Category<select id="e-cat">${CATS.map(c=>`<option ${c===r.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
-    <label class="f">Severity<select id="e-sev">${["error","warning","info","symptom","noise"].map(s=>`<option ${s===r.severity?"selected":""}>${s}</option>`).join("")}</select></label>
-    <label class="f">Transactions<input type="text" id="e-tx" value="${esc((r.transactions||[]).join(", "))}"></label>
+    <label class="f">Category<select id="e-cat">${cats.map(c=>`<option ${c===r.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+    <label class="f">Severity<select id="e-sev">${SEVS.map(s=>`<option ${s===r.severity?"selected":""}>${s}</option>`).join("")}</select></label>
+    <label class="f">Where to look<input type="text" id="e-tx" value="${esc((r.transactions||[]).join(", "))}"></label>
     <label class="f wide">Root cause<textarea id="e-cause" style="font-family:var(--f-body)">${esc(r.rootCause)}</textarea></label>
     <label class="f wide">Fix steps (one per line)<textarea id="e-fix" style="font-family:var(--f-body)">${esc((r.fixSteps||[]).join("\n"))}</textarea></label>
     <label class="f wide">How to confirm<input type="text" id="e-ver" value="${esc(r.verify||"")}"></label>
@@ -835,39 +972,31 @@ function wireKbEdit(){
    Case history view
    ===================================================================== */
 function renderHistory(){
-  const el = document.getElementById("viewHistory");
+  const el = document.getElementById("view-history");
   resolveNames(S.cases.map(c=>c.by).filter(Boolean));
-  const cats = {}; S.cases.forEach(c=>(c.findings||[]).filter(f=>f.sev==="error"||f.sev==="warning").forEach(f=>{ cats[f.title]=(cats[f.title]||0)+1; }));
+  const cats = {}; S.cases.forEach(c=>(c.findings||[]).filter(f=>f.sev==="error"||f.sev==="warning").forEach(f=>{ const k = `${platLabel(c.platform||"abap")} · ${f.title}`; cats[k]=(cats[k]||0)+1; }));
   const top = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
   el.innerHTML = `<section class="panel" aria-labelledby="h-hist">
     <div class="ph"><h2 id="h-hist">Case history</h2><span class="hint">${S.db ? "Shared with everyone who can open this page." : "Shared memory isn't available in this view."}</span></div>
     ${top.length ? `<div style="display:grid;gap:6px"><h3>Most frequent root causes</h3>${top.map(([t,n])=>`<div class="row" style="gap:10px"><span style="min-width:2.5em" class="mono">${n}×</span><div style="flex:1;min-width:120px;height:8px;background:var(--sunk);border-radius:99px;overflow:hidden"><div style="width:${n/top[0][1]*100}%;height:100%;background:var(--accent)"></div></div><span style="flex:2;min-width:160px">${esc(t)}</span></div>`).join("")}</div>` : ""}
-    ${S.cases.length ? `<div class="tablewrap"><table><thead><tr><th>Date</th><th>Request</th><th>Target</th><th>RC</th><th>Root causes</th><th>Unknown</th><th>Saved by</th></tr></thead><tbody>
-      ${S.cases.map(c=>`<tr><td class="m">${esc(fmtDate(c.at))}</td><td class="m">${esc(c.tr)}</td><td class="m">${esc(c.system)}</td><td><span class="rc ${rcInfo(c.rc).cls}">${esc(c.rc)}</span></td>
+    ${S.cases.length ? `<div class="tablewrap"><table><thead><tr><th>Date</th><th>Platform</th><th>Request</th><th>Target</th><th>RC</th><th>Root causes</th><th>Unknown</th><th>Saved by</th></tr></thead><tbody>
+      ${S.cases.map(c=>{ const P = PLAT[c.platform||"abap"]; return `<tr><td class="m">${esc(fmtDate(c.at))}</td><td>${platLabel(c.platform||"abap")}</td><td class="m" style="overflow-wrap:anywhere">${esc(c.tr)}</td><td class="m">${esc(c.system)}</td><td><span class="rc ${P.rcInfo(c.rc).cls}">${esc(c.rc)}</span></td>
         <td>${(c.findings||[]).filter(f=>f.sev==="error"||f.sev==="warning").map(f=>`${esc(f.title)}${f.objs&&f.objs.length?` <span class="hint mono">(${f.objs.slice(0,4).map(esc).join(", ")}${f.objs.length>4?"…":""})</span>`:""}`).join("<br>") || "–"}</td>
-        <td class="m">${esc(c.unknown||0)}</td><td>${esc(nameOf(c.by)||"–")}</td></tr>`).join("")}
-    </tbody></table></div>` : `<div class="empty">No cases saved yet. Analyse a log on the Triage tab and choose "Save case to history".</div>`}
+        <td class="m">${esc(c.unknown||0)}</td><td>${esc(nameOf(c.by)||"–")}</td></tr>`; }).join("")}
+    </tbody></table></div>` : `<div class="empty">No cases saved yet. Analyse a log and choose "Save case to history".</div>`}
   </section>`;
 }
 
 /* =====================================================================
-   Wiring and runtime
+   Start
    ===================================================================== */
-function resetAndLoad(pairs){ S.logs=[]; S.drafts={}; S.showAllUnmatched=false; S.lastSaved=""; pairs.forEach(([t,n])=>addLog(t,n)); render(); }
-document.getElementById("btnEx1").onclick = ()=>resetAndLoad([[SAMPLE_TR,"DS4R904917.QS4"],[SAMPLE_ACT,"A9HU activation log (SE11)"]]);
-document.getElementById("btnEx2").onclick = ()=>resetAndLoad([[SAMPLE_SYN,"DS4G905102.QS4 (synthetic example)"]]);
-document.getElementById("btnClear").onclick = ()=>resetAndLoad([]);
-document.getElementById("btnPaste").onclick = ()=>{ const t=document.getElementById("paste").value; if (t.trim()){ addLog(t,"pasted text"); document.getElementById("paste").value=""; render(); } };
-async function handleFiles(list){ for (const f of list){ try { addLog(await readFile(f), f.name); } catch { S.logs.push({id:hash(f.name), name:f.name+" (unreadable)", letter:"?", tr:"", target:"", lines:[]}); } } render(); }
-document.getElementById("file").onchange = e=>handleFiles(e.target.files);
-const drop = document.getElementById("drop");
-drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("over"); });
-drop.addEventListener("dragleave", ()=>drop.classList.remove("over"));
-drop.addEventListener("drop", e=>{ e.preventDefault(); drop.classList.remove("over"); handleFiles(e.dataTransfer.files); });
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.view; try{ localStorage.setItem("tit-view", S.view); }catch{} render(); });
-try { const v = localStorage.getItem("tit-view"); if (v && ["triage","kb","history"].includes(v)) S.view = v; } catch {}
-
-resetAndLoad([[SAMPLE_TR,"DS4R904917.QS4"],[SAMPLE_ACT,"A9HU activation log (SE11)"]]);
+buildWs("abap"); buildWs("btp");
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.view; try{ localStorage.setItem("tit-view2", S.view); }catch{} render(); });
+try { const v = localStorage.getItem("tit-view2"); if (v && ["abap","btp","kb","history"].includes(v)) S.view = v; } catch {}
+PLAT.abap.examples[0][1]().forEach(([t,n])=>addLog("abap",t,n));
+PLAT.btp.examples[0][1]().forEach(([t,n])=>addLog("btp",t,n));
+WS.abap.note = ""; WS.btp.note = "";
+render();
 
 (async()=>{
   const c = window.claude;
@@ -876,8 +1005,8 @@ resetAndLoad([[SAMPLE_TR,"DS4R904917.QS4"],[SAMPLE_ACT,"A9HU activation log (SE1
   S.sample = sample; S.user = user; S.db = db;
   if (user){ S.me = await user.id(); S.canWrite = await user.can("data.write"); }
   if (db){
-    db.collection("rules").onSnapshot(snap=>{ S.learned = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{ });
-    db.collection("cases").orderBy("at","desc").limit(300).onSnapshot(snap=>{ S.cases = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{ });
+    db.collection("rules").onSnapshot(snap=>{ S.learned = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{});
+    db.collection("cases").orderBy("at","desc").limit(300).onSnapshot(snap=>{ S.cases = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{});
   }
   render();
 })();
