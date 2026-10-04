@@ -130,6 +130,8 @@ tr.rowE td{background:var(--err-soft)} tr.rowW td{background:var(--warn-soft)}
 .panel,.logcard,.unk,.draft,.find .body{grid-template-columns:minmax(0,1fr)}
 .find h3{overflow-wrap:anywhere;min-width:0}
 .mono{overflow-wrap:anywhere} .badges .pill{white-space:normal}
+.btnlike{font-weight:500;font-size:.86rem;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
+.btnlike:hover{border-color:var(--accent)}
 .cmd{font-family:var(--f-mono);font-size:.8rem;background:var(--sunk);padding:8px 10px;border-radius:6px;overflow-wrap:anywhere}
 </style>
 
@@ -712,8 +714,8 @@ function renderUnknown(p, A){
   const list = ws.showAll ? [...errorish, ...other] : errorish;
   const draftsOnly = Object.values(ws.drafts).filter(d=>!groups.some(g=>g.key===d.key));
   el.innerHTML = head +
-    (S.sample ? "" : `<div class="notice">AI help isn't available in this view. You can copy the prompt into Claude or Joule, or write the rule yourself.</div>`) +
-    (S.db ? "" : `<div class="notice warn">Shared memory isn't available in this view. Approved rules only last until you close the page.</div>`) +
+    (S.sample ? "" : `<div class="notice">AI help isn't built in here. Choose "Copy AI prompt", paste it into Claude (or Joule), then "Paste AI answer" to turn the reply into a draft rule.</div>`) +
+    (S.local ? `<div class="notice warn">Approved rules and saved cases are kept in this browser only. To share them with the team, use Knowledge base → Export rules, and Import on the other side.</div>` : "") +
     (S.canWrite === false ? `<div class="notice warn">You can view the knowledge base but not change it. Ask the owner for Contributor access to approve rules.</div>` : "") +
     (errorish.length ? `<div class="row"><span>${errorish.length} unknown error line type${errorish.length>1?"s":""}.</span>${S.sample && errorish.length>1 ? `<button type="button" class="ai" data-act="askall" ${ws.aiBusy.all?"disabled":""}>${ws.aiBusy.all?"Asking AI…":`Ask AI about all ${Math.min(errorish.length,8)}`}</button>`:""}</div>`
       : `<div class="notice">Every error line matched a known rule.</div>`) +
@@ -737,7 +739,7 @@ function unknownCard(p, u){
     <div class="line">${esc(u.line)}</div>
     <details><summary>Context</summary><div class="line" style="white-space:pre-wrap;margin-top:8px">${u.context.map(esc).join("\n")}</div></details>
     ${d ? draftCard(p, d) : `<div class="row">
-      ${S.sample ? `<button type="button" class="ai" data-act="ask" data-k="${u.key}" ${busy?"disabled":""}>${busy?"Asking AI…":"Ask AI to diagnose"}</button>` : `<button type="button" data-act="copyprompt" data-k="${u.key}">Copy AI prompt</button>`}
+      ${S.sample ? `<button type="button" class="ai" data-act="ask" data-k="${u.key}" ${busy?"disabled":""}>${busy?"Asking AI…":"Ask AI to diagnose"}</button>` : `<button type="button" class="ai" data-act="copyprompt" data-k="${u.key}">Copy AI prompt</button><button type="button" class="ai" data-act="pasteai" data-k="${u.key}">Paste AI answer</button>`}
       <button type="button" data-act="noise" data-k="${u.key}">Mark as noise</button>
       <button type="button" data-act="manual" data-k="${u.key}">Write the rule myself</button>
       <span class="toast" id="t-${u.key}" hidden>Prompt copied</span></div>`}
@@ -746,10 +748,11 @@ function unknownCard(p, u){
 function draftCard(p, d){
   const k = d.key, cats = PLAT[p].cats;
   let ok = false, valid = true; try { ok = new RegExp(d.pattern,"i").test(d.line); } catch { valid = false; }
-  const origin = d.source==="ai" ? `AI draft${d.confidence?` · confidence ${esc(d.confidence)}`:""}` : d.source==="noise" ? "Noise rule" : "Your rule";
+  const origin = d.pasteMode ? "AI answer (pasted)" : d.source==="ai" ? `AI draft${d.confidence?` · confidence ${esc(d.confidence)}`:""}` : d.source==="noise" ? "Noise rule" : "Your rule";
   return `<div class="draft" data-k="${k}">
     <div class="row between"><b>${origin}</b><span class="hint">Review and edit before approving.</span></div>
     ${d.error ? `<div class="notice warn">${esc(d.error)}</div>`:""}
+    ${d.pasteMode ? `<label class="f">Paste the AI's JSON answer<textarea id="d-ans-${k}" placeholder='{"title": "...", "rootCause": "...", ...}'></textarea></label><div class="row"><button type="button" class="ai" data-act="fillai" data-k="${k}">Fill the draft from this answer</button></div>` : ""}
     <div class="formgrid">
       <label class="f wide">Title<input type="text" id="d-title-${k}" data-f="title" value="${esc(d.title)}"></label>
       <label class="f">Category<select id="d-cat-${k}" data-f="category">${cats.map(c=>`<option ${c===d.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
@@ -827,6 +830,15 @@ async function onUnknownAction(p, act, k, u, btn, groups, A){
     try { await navigator.clipboard.writeText(t); const s=document.getElementById("t-"+k); if (s){ s.hidden=false; setTimeout(()=>s.hidden=true,1500); } }
     catch { const ta = document.getElementById(p+"-paste"); ta.value = t; ta.focus(); ta.select(); }
     return;
+  }
+  if (act==="pasteai"){ const d = baseDraft(p,u,"ai"); d.pasteMode = true; ws.drafts[k] = d; return render(); }
+  if (act==="fillai"){
+    const d0 = ws.drafts[k], ta = document.getElementById("d-ans-"+k), txt = ta ? ta.value : "";
+    const m = txt.match(/```(?:json)?\s*([\s\S]*?)```/); const src = m ? m[1] : txt.slice(Math.max(0, Math.min(...["{","["].map(c=>{ const i = txt.indexOf(c); return i<0 ? Infinity : i; }))));
+    let obj = null; try { obj = JSON.parse(src.slice(0, Math.max(src.lastIndexOf("}"), src.lastIndexOf("]"))+1)); } catch {}
+    if (Array.isArray(obj)) obj = obj.find(o=>o && o.key===k) || obj[0];
+    if (!obj || typeof obj!=="object"){ d0.error = "That doesn't look like the JSON answer. Paste the whole reply, including the braces."; return render(); }
+    const uu = u || {key:k, line:d0.line, sig:d0.sig}; applyAi(p, uu, obj); ws.drafts[k].pasteMode = false; return render();
   }
   if (act==="noise"){ const d = baseDraft(p,u,"noise"); Object.assign(d,{severity:"noise", category:"Noise", title:"Ignore: "+u.line.slice(0,60), rootCause:"Marked as safe to ignore by the team."}); ws.drafts[k]=d; return render(); }
   if (act==="manual"){ ws.drafts[k] = baseDraft(p,u,"manual"); return render(); }
@@ -917,7 +929,10 @@ function renderKb(){
   resolveNames(S.learned.map(r=>r.createdBy).filter(Boolean));
   const catsHere = [...new Set(rows.filter(r=>!S.kbPlat || r.plat===S.kbPlat).map(r=>r.cat))];
   el.innerHTML = `<section class="panel" aria-labelledby="h-kbv">
-    <div class="ph"><h2 id="h-kbv">Knowledge base</h2><div class="row"><button type="button" id="btnExport">Copy team rules as JSON</button><span class="toast" id="kbMsg" hidden></span></div></div>
+    <div class="ph"><h2 id="h-kbv">Knowledge base</h2><div class="row">
+      ${S.standalone ? `<button type="button" id="btnDownload">Export rules (.json)</button>` : `<button type="button" id="btnExport">Copy team rules as JSON</button>`}
+      ${S.canWrite===false ? "" : `<label class="btnlike" for="kbImport" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">Import rules (.json)</label><input type="file" id="kbImport" accept=".json,application/json" hidden>`}
+      <span class="toast" id="kbMsg" hidden></span></div></div>
     <p class="hint">${BUILTIN_ABAP.length} built-in S/4HANA rules, ${BUILTIN_BTP.length} built-in BTP rules, ${S.learned.length} learned by the team${S.session.length?`, ${S.session.length} for this session only`:""}. Team rules are checked first.</p>
     <div class="row">${[["","All platforms"],["abap","S/4HANA"],["btp","BTP"]].map(([v,l])=>`<button type="button" class="${S.kbPlat===v?"primary":""}" data-plat="${v}">${l}</button>`).join("")}</div>
     <div class="row">${catsHere.map(c=>`<button type="button" class="${S.kbCat===c?"primary":""}" data-cat="${esc(c)}">${esc(c)} · ${rows.filter(r=>r.cat===c && (!S.kbPlat||r.plat===S.kbPlat)).length}</button>`).join("")}${S.kbCat?`<button type="button" class="link" data-cat="">All categories</button>`:""}</div>
@@ -935,8 +950,30 @@ function renderKb(){
   el.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{ kbConfirm=null; renderKb(); });
   el.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ b.disabled=true; try { await S.db.doc("rules/"+b.dataset.del).delete(); } catch {} kbConfirm=null; render(); });
   el.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ const r=S.learned.find(x=>x.id===b.dataset.edit); kbEdit = r ? JSON.parse(JSON.stringify(r)) : null; renderKb(); });
-  document.getElementById("btnExport").onclick = async ()=>{
-    const json = JSON.stringify({exportedAt:new Date().toISOString(), rules:S.learned.map(({id,createdBy,...r})=>r)}, null, 2);
+  const exportJson = ()=>JSON.stringify({format:"transport-import-triage-rules", version:1, exportedAt:new Date().toISOString(), rules:S.learned.map(({id,createdBy,editedBy,...r})=>r)}, null, 2);
+  const dl = document.getElementById("btnDownload");
+  if (dl) dl.onclick = ()=>{ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([exportJson()],{type:"application/json"})); a.download = `transport-triage-rules-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); a.remove(); };
+  const imp = document.getElementById("kbImport");
+  if (imp) imp.onchange = async e=>{
+    const m = document.getElementById("kbMsg"); const f = e.target.files[0]; if (!f) return;
+    let rules = []; try { const j = JSON.parse(await f.text()); rules = Array.isArray(j) ? j : (j.rules||[]); } catch { m.textContent="That file isn't a rules export."; m.className="bad"; m.hidden=false; return; }
+    const have = new Set(S.learned.map(r=>(r.platform||"abap")+"|"+r.pattern));
+    let added = 0, skipped = 0;
+    for (const r of rules){
+      if (!r || typeof r.pattern!=="string" || !r.title){ skipped++; continue; }
+      try { new RegExp(r.pattern,"i"); } catch { skipped++; continue; }
+      const key = (r.platform||"abap")+"|"+r.pattern; if (have.has(key)){ skipped++; continue; }
+      const clean = {platform:r.platform==="btp"?"btp":"abap", title:String(r.title).slice(0,200), category:String(r.category||"Symptom"), severity:SEVS.includes(r.severity)?r.severity:"error",
+        rootCause:String(r.rootCause||""), fixSteps:Array.isArray(r.fixSteps)?r.fixSteps.map(String):[], transactions:Array.isArray(r.transactions)?r.transactions.map(String):[],
+        verify:String(r.verify||""), pattern:r.pattern, source:String(r.source||"manual"), confidence:String(r.confidence||""), example:String(r.example||"").slice(0,300),
+        importedAt:new Date().toISOString(), createdAt:r.createdAt||new Date().toISOString(), createdBy:S.me||null};
+      try { await S.db.collection("rules").add(clean); have.add(key); added++; } catch { skipped++; }
+    }
+    const m2 = document.getElementById("kbMsg"); if (m2){ m2.textContent = `Imported ${added} rule${added===1?"":"s"}${skipped?`, skipped ${skipped} (duplicates or invalid)`:""}`; m2.className="toast"; m2.hidden=false; }
+  };
+  const ex = document.getElementById("btnExport");
+  if (ex) ex.onclick = async ()=>{
+    const json = exportJson();
     const m = document.getElementById("kbMsg");
     try { await navigator.clipboard.writeText(json); m.textContent = `Copied ${S.learned.length} team rules`; } catch { m.textContent="Copy isn't allowed here"; } m.hidden=false;
   };
@@ -977,7 +1014,7 @@ function renderHistory(){
   const cats = {}; S.cases.forEach(c=>(c.findings||[]).filter(f=>f.sev==="error"||f.sev==="warning").forEach(f=>{ const k = `${platLabel(c.platform||"abap")} · ${f.title}`; cats[k]=(cats[k]||0)+1; }));
   const top = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
   el.innerHTML = `<section class="panel" aria-labelledby="h-hist">
-    <div class="ph"><h2 id="h-hist">Case history</h2><span class="hint">${S.db ? "Shared with everyone who can open this page." : "Shared memory isn't available in this view."}</span></div>
+    <div class="ph"><h2 id="h-hist">Case history</h2><span class="hint">${S.local ? "Kept in this browser only." : "Shared with everyone who can open this page."}</span></div>
     ${top.length ? `<div style="display:grid;gap:6px"><h3>Most frequent root causes</h3>${top.map(([t,n])=>`<div class="row" style="gap:10px"><span style="min-width:2.5em" class="mono">${n}×</span><div style="flex:1;min-width:120px;height:8px;background:var(--sunk);border-radius:99px;overflow:hidden"><div style="width:${n/top[0][1]*100}%;height:100%;background:var(--accent)"></div></div><span style="flex:2;min-width:160px">${esc(t)}</span></div>`).join("")}</div>` : ""}
     ${S.cases.length ? `<div class="tablewrap"><table><thead><tr><th>Date</th><th>Platform</th><th>Request</th><th>Target</th><th>RC</th><th>Root causes</th><th>Unknown</th><th>Saved by</th></tr></thead><tbody>
       ${S.cases.map(c=>{ const P = PLAT[c.platform||"abap"]; return `<tr><td class="m">${esc(fmtDate(c.at))}</td><td>${platLabel(c.platform||"abap")}</td><td class="m" style="overflow-wrap:anywhere">${esc(c.tr)}</td><td class="m">${esc(c.system)}</td><td><span class="rc ${P.rcInfo(c.rc).cls}">${esc(c.rc)}</span></td>
@@ -998,16 +1035,36 @@ PLAT.btp.examples[0][1]().forEach(([t,n])=>addLog("btp",t,n));
 WS.abap.note = ""; WS.btp.note = "";
 render();
 
+/* Local store: used when the page runs outside claude.ai (standalone file) or shared memory is unavailable */
+function localDb(){
+  const KEY = "tit-store-v1"; let data = {};
+  try { data = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
+  data.rules ||= {}; data.cases ||= {};
+  const subs = {rules:[], cases:[]};
+  const save = ()=>{ try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} };
+  const snap = c => { const docs = Object.entries(data[c]).map(([id,v])=>({id, data:()=>v}));
+    if (c==="cases") docs.sort((a,b)=>String(b.data().at||"").localeCompare(String(a.data().at||""))); return {docs}; };
+  const emit = c => subs[c].forEach(f=>f(snap(c)));
+  return {
+    local:true,
+    doc: path => { const [c,id] = path.split("/"); return { set: async v=>{ data[c][id]=v; save(); emit(c); }, delete: async ()=>{ delete data[c][id]; save(); emit(c); } }; },
+    collection: c => ({ add: async v=>{ const id = "l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); data[c][id]=v; save(); emit(c); return {id}; },
+      orderBy(){ return this; }, limit(){ return this; }, onSnapshot(f){ subs[c].push(f); f(snap(c)); return ()=>{}; } })
+  };
+}
+function subscribe(db){
+  db.collection("rules").onSnapshot(snap=>{ S.learned = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{});
+  db.collection("cases").orderBy("at","desc").limit(300).onSnapshot(snap=>{ S.cases = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{});
+}
+S.standalone = !(window.claude && window.claude.use);
 (async()=>{
+  if (S.standalone){ S.db = localDb(); S.local = true; subscribe(S.db); render(); return; }
   const c = window.claude;
-  if (!c?.use) return;
   const [db, sample, user] = await Promise.all([c.use("db").catch(()=>null), c.use("sample").catch(()=>null), c.use("user").catch(()=>null)]);
-  S.sample = sample; S.user = user; S.db = db;
+  S.sample = sample; S.user = user;
   if (user){ S.me = await user.id(); S.canWrite = await user.can("data.write"); }
-  if (db){
-    db.collection("rules").onSnapshot(snap=>{ S.learned = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{});
-    db.collection("cases").orderBy("at","desc").limit(300).onSnapshot(snap=>{ S.cases = snap.docs.map(d=>({id:d.id, ...d.data()})); safeRender(); }, ()=>{});
-  }
+  S.db = db || localDb(); S.local = !db;
+  subscribe(S.db);
   render();
 })();
 </script>

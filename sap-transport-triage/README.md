@@ -5,6 +5,7 @@ Tools that help the Basis team find the root cause when an S/4HANA transport imp
 | File | What it is | Where it runs |
 |---|---|---|
 | `index.html` | Learning log triage (published as a claude.ai artifact) with two sections: **S/4HANA transports** (tp/STMS/SE11 logs) and **BTP Cloud Transport** (Cloud Transport Management action logs; Integration Suite via Content Agent now, MTA/CAP apps next). Five stages: read any tp step log, explain step and RC, match against the team's knowledge base and built-in rules, let the user decide on unknown errors (ask AI, mark as noise, or write the rule), and remember the approved rule and the case. Team rules and case history live in the artifact's shared store. | claude.ai artifact; logs are parsed in the browser |
+| `standalone/transport-import-triage.html` | The same tool as one self-contained file (Excel reader embedded, works offline). Opens in any browser. Rules and cases are kept in that browser; share them with Knowledge base → Export / Import. AI help works by copying the prompt into Claude or Joule and pasting the answer back. | Any browser, no claude.ai needed |
 | `abap/zbc_cond_table_precheck.abap` | ABAP report that checks condition tables in the system directly: more than 16 key fields, fields missing from `KOMG`, inactive data elements, inactive table versions. ALV output. | DEV before release; QAS/PRD after a failed import |
 
 ## Recommended operating model
