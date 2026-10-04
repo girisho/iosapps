@@ -1,0 +1,907 @@
+<title>Incident Lens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>
+/* Layout: a case desk. Intake strip, then a portfolio of incident cards; selecting one opens a drillable case file with tabs. */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --sunk:#E8ECF1; --ink:#18212D; --muted:#5A6676; --line:#D5DCE4;
+  --accent:#2F4BA8; --accent-ink:#FFFFFF; --accent-soft:#E2E8F8;
+  --sap:#1D6FB8; --sap-soft:#DDEBF7; --proj:#B15F00; --proj-soft:#FBEBD6; --sys:#7A8594;
+  --err:#B42318; --err-soft:#FBE7E5; --warn:#9A5B00; --warn-soft:#FBEFD9; --ok:#2C7A4B; --ok-soft:#E1F2E7; --ai:#6B3FA0; --ai-soft:#EEE6F8;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151C; --surface:#18202A; --sunk:#212B37; --ink:#E5EAF0; --muted:#9AA7B6; --line:#2E3A48;
+  --accent:#8EA4F0; --accent-ink:#0F1730; --accent-soft:#1F2A4A;
+  --sap:#6FB0EC; --sap-soft:#17304A; --proj:#F0A64E; --proj-soft:#3A2810; --sys:#8C97A6;
+  --err:#F08A80; --err-soft:#3A1D1A; --warn:#E8AA55; --warn-soft:#352812; --ok:#73C493; --ok-soft:#173022; --ai:#C4A2F0; --ai-soft:#2A2038; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151C; --surface:#18202A; --sunk:#212B37; --ink:#E5EAF0; --muted:#9AA7B6; --line:#2E3A48;
+  --accent:#8EA4F0; --accent-ink:#0F1730; --accent-soft:#1F2A4A;
+  --sap:#6FB0EC; --sap-soft:#17304A; --proj:#F0A64E; --proj-soft:#3A2810; --sys:#8C97A6;
+  --err:#F08A80; --err-soft:#3A1D1A; --warn:#E8AA55; --warn-soft:#352812; --ok:#73C493; --ok-soft:#173022; --ai:#C4A2F0; --ai-soft:#2A2038; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:grid;gap:22px;grid-template-columns:minmax(0,1fr)}
+h1,h2,h3,h4{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:.005em}
+h1{font-size:2rem;line-height:1.1} h2{font-size:1.3rem} h3{font-size:1.08rem} h4{font-size:.95rem}
+p{margin:0}
+.lede{color:var(--muted);max-width:74ch}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.86em;overflow-wrap:anywhere}
+.hint{font-size:.84rem;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.between{justify-content:space-between}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+button,.btnlike{font:inherit;font-weight:500;font-size:.86rem;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.ai{background:var(--ai-soft);border-color:var(--ai);color:var(--ai)}
+button.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline}
+button:hover:not([disabled]),.btnlike:hover{border-color:var(--accent)}
+button[disabled]{opacity:.55;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea{width:100%;font:inherit;font-size:.86rem;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:9px;min-height:120px;resize:vertical}
+.notice{padding:10px 12px;border-radius:6px;background:var(--accent-soft);font-size:.88rem}
+.notice.warn{background:var(--warn-soft)} .notice.err{background:var(--err-soft)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:.7rem;padding:2px 8px;border-radius:99px;background:var(--sunk);color:var(--muted);white-space:normal}
+.pill.sap{background:var(--sap-soft);color:var(--sap)} .pill.proj{background:var(--proj-soft);color:var(--proj)}
+.pill.err{background:var(--err-soft);color:var(--err)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.ai{background:var(--ai-soft);color:var(--ai)}
+/* intake */
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:18px;display:grid;gap:8px;background:var(--sunk);grid-template-columns:minmax(0,1fr)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.how{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.how{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.how div{display:grid;gap:2px;font-size:.84rem;color:var(--muted)} .how b{color:var(--ink);font-family:var(--f-display);font-size:.95rem}
+.how .n{font-family:var(--f-mono);font-size:.7rem;color:var(--accent)}
+/* portfolio */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:16px;display:grid;gap:10px;cursor:pointer;text-align:left;grid-template-columns:minmax(0,1fr);font-size:.9rem;font-weight:400}
+.card.sel{outline:2px solid var(--accent)}
+.card .top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.card h3{font-size:1rem;overflow-wrap:anywhere}
+.clockchip{font-family:var(--f-mono);font-size:.78rem;padding:4px 9px;border-radius:6px;white-space:nowrap;background:var(--ok-soft);color:var(--ok);font-weight:600}
+.clockchip.warn{background:var(--warn-soft);color:var(--warn)} .clockchip.err{background:var(--err-soft);color:var(--err)} .clockchip.none{background:var(--sunk);color:var(--muted)}
+.minibar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--sunk)}
+.minibar i{display:block;height:100%}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:.84rem}
+.kv span:nth-child(odd){color:var(--muted)}
+/* case */
+.casehead{display:grid;gap:10px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.fact{padding:10px 12px;display:grid;gap:2px;box-shadow:inset -1px -1px 0 var(--line);min-width:0}
+.fact span{font-size:.74rem;color:var(--muted)} .fact b{font-weight:600;font-size:.92rem;overflow-wrap:anywhere} .fact small{font-size:.76rem;color:var(--muted)}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 11px;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .cnt{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);margin-left:4px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.block{display:grid;gap:8px;min-width:0}
+.big{font-size:1.06rem;line-height:1.55;max-width:72ch}
+.quote{border-left:3px solid var(--line);padding-left:12px;color:var(--muted);font-style:italic}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tabBody > div{grid-template-columns:minmax(0,1fr)} .msgs,.block{grid-template-columns:minmax(0,1fr)}
+.stat{background:var(--sunk);border-radius:8px;padding:10px 12px;display:grid;gap:2px}
+.stat b{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--muted)}
+.flag{display:grid;grid-template-columns:5px 1fr;gap:12px;padding:12px;border-radius:8px;background:var(--sunk)}
+.flag .s{border-radius:3px;background:var(--warn)} .flag.high .s{background:var(--err)} .flag.info .s{background:var(--accent)}
+.flag div{display:grid;gap:3px;min-width:0}
+/* clock */
+.clock{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+@media (max-width:620px){.clock{grid-template-columns:1fr}}
+.ring{width:150px;height:150px;max-width:100%}
+.count{font-family:var(--f-display);font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums}
+/* ownership */
+.own{display:flex;height:26px;border-radius:6px;overflow:hidden;background:var(--sunk)}
+.own i{display:block;height:100%;min-width:1px}
+.own i.sap{background:var(--sap)} .own i.proj{background:var(--proj)} .own i.none{background:var(--sys)}
+.axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--muted)}
+.legend em{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.hops{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch}
+.hop{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:2px;max-width:230px;background:var(--surface)}
+.hop b{font-family:var(--f-mono);font-size:.74rem} .hop span{font-size:.8rem} .hop small{font-size:.72rem;color:var(--muted)}
+.hop.cur{border-color:var(--accent);background:var(--accent-soft)}
+.arrow{align-self:center;color:var(--muted)}
+/* tables */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-weight:500;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--sunk);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+/* contention */
+.vs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+@media (max-width:620px){.vs{grid-template-columns:minmax(0,1fr)}}
+.side{border-radius:8px;padding:10px 12px;display:grid;gap:4px}
+.side.sap{background:var(--sap-soft)} .side.proj{background:var(--proj-soft)}
+.side b{font-size:.78rem;font-family:var(--f-mono);letter-spacing:.04em}
+.side.sap b{color:var(--sap)} .side.proj b{color:var(--proj)}
+.ccard{border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:10px}
+/* actions */
+.act{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-radius:8px;align-items:start}
+.act input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+.act.done{opacity:.6} .act.done .what{text-decoration:line-through}
+.act div{display:grid;gap:4px;min-width:0}
+/* conversation */
+.msg{display:grid;grid-template-columns:4px minmax(0,1fr);gap:12px}
+.msg .peek{overflow-wrap:anywhere}
+.msg .bar{border-radius:3px;background:var(--sys)} .msg.sap .bar{background:var(--sap)} .msg.proj .bar{background:var(--proj)}
+.msg details{border:0;padding:0}
+.msg summary{list-style:none;cursor:pointer;display:grid;gap:3px}
+.msg summary::-webkit-details-marker{display:none}
+.msg .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.8rem;color:var(--muted)}
+.msg .peek{font-size:.88rem;color:var(--ink)}
+.msg pre{white-space:pre-wrap;font-family:var(--f-body);font-size:.88rem;background:var(--sunk);border-radius:8px;padding:12px;margin:8px 0 0;overflow-wrap:anywhere}
+.msg.new .meta::after{content:"New";font-family:var(--f-mono);font-size:.66rem;padding:1px 6px;border-radius:99px;background:var(--accent);color:var(--accent-ink)}
+.msgs{display:grid;gap:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{padding:4px 10px;font-size:.8rem}
+.chips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.gl{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.gl div{background:var(--sunk);border-radius:8px;padding:10px 12px;display:grid;gap:2px}
+.gl b{font-family:var(--f-display)} .gl span{font-size:.86rem}
+.empty{padding:20px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:.9rem}
+.toast{font-size:.8rem;color:var(--ok)}
+.srcnote{font-size:.76rem;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+@media (prefers-reduced-motion:no-preference){button,.card{transition:border-color .15s,background .15s}}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <span class="eyebrow">SAP Support cases · explained for everyone</span>
+    <h1>Incident Lens</h1>
+    <p class="lede">Drop the PDF print of one or more SAP support incidents. You get what the case is about in plain words, how long until SAP auto-closes it, who has been holding it, what SAP recommended next to what the project did, where the two sides disagree, and what to do next.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-in">
+    <div class="row between"><h2 id="h-in">Add incidents</h2><div class="row" id="introBtns"></div></div>
+    <div class="drop" id="drop">
+      <strong>Drop incident PDFs here, one or many</strong>
+      <span class="hint">In SAP for Me open the case and choose Print → Save as PDF. The PDF is read in your browser; phone numbers, e-mail domains and meeting links are masked before anything is stored or sent to AI.</span>
+      <input type="file" id="file" accept="application/pdf,.pdf" multiple aria-label="Choose incident PDFs">
+    </div>
+    <div class="how">
+      <div><span class="n">1</span><b>Read</b>The case number, status, priority, auto-close date, every message and the action log.</div>
+      <div><span class="n">2</span><b>Measure</b>Countdown, who held the case and for how long, team hand-offs, silences, repeated advice.</div>
+      <div><span class="n">3</span><b>Explain</b>AI turns the thread into plain words: recommended versus done, disagreements, actions, a draft reply.</div>
+      <div><span class="n">4</span><b>Remember</b>Cases stay on the list for the team. Upload a newer PDF and new messages are flagged.</div>
+    </div>
+    <div id="intakeMsg"></div>
+  </section>
+
+  <section class="panel" id="portfolio" aria-labelledby="h-pf"></section>
+  <section class="panel" id="casePanel" aria-labelledby="h-case" hidden></section>
+</div>
+
+<script>
+const EXAMPLE = {"case": {"header": {"caseId": "002075129500010372322026", "customer": "1101113 - Navistar Inc.", "installation": "0021354143 - SAP S/4HANA PRIV. CL. ED.", "system": "DS4 - DS4VWC", "component": "ECS TechOps SAP Basis (PCO-OPS-BAS)", "status": "Customer Action", "priority": "High", "autoConfirm": "12.10.2026", "componentCode": "PCO-OPS-BAS"}, "messages": [{"at": "2026-08-10T18:19:18.000Z", "atText": "10.08.2026 19:19:18 CET", "type": "Problem Description", "author": "saravanan vilvapathi", "party": "proj", "text": "--- Description ---\nHello SAP,\nWe added some new entries in Common CBC app in SAP Build workzone for DS4-100. This corresponds to table ZTDEV_COMMON_CBC. We stored it in TR DS4K903354(also in DS4K90339 to test) and copied it using SCC1N to 110 client. This is indeed customizing TR and we also included tasks when copying.\nThe logs in SCC3 show its successful, we also didnt select test mode in case you are wondering that part. But even after its copied successfully, we could not see the entries in 110. As mentioned above we also tried it in a fresh new TR, fresh new entry and a fresh u and the same result. We also checked in SE01 and the TR itself has the table name and contents within it when we expand and check.\nWe opened the client and got the edit access and added new entries directly in 110 for now, but we need a permanent issue fix for this. can you please check? This is happening only for common CBC app while others dont exhibit this data.\nWe have also maintained R3 user in secure area for you to login and check for both DS4-100 as well as DS4-110.\nThanks & regards,\nSaravanan V.\nInternational BASIS team.\n--- Support Assistant ---\nQ: Please categorize your issue by choosing the option below that best fits your scenario.\nA: View Maintenance Tool\nQ: Please categorize your issue by choosing the option below that best fits your scenario.\nA: Customizing request is/ is not recorded\nQ: Please categorize your issue by choosing the option below that best fits your scenario.\nA: None of these"}, {"at": "2026-08-10T18:19:19.000Z", "atText": "10.08.2026 19:19:19 CET", "type": "Business Impact", "author": "saravanan vilvapathi", "party": "proj", "text": "Critically affected: Productive service/system/core business process is down or production system go-live in danger or a severe security issue.\nBusiness impact category: Core business processes affected\nIs there a workaround: Yes\nHow effective is it: Manually entering the entries, but this is only temporary as approvals are only for short duration.\nWe are in SIT1 and this has been logged in as critical defect with a fix requiring in 1 day, so please consider this with priority and help us resolve it as this will impact business and delay SIT1 completion and potentially Go-live."}, {"at": "2026-08-10T22:10:42.000Z", "atText": "10.08.2026 23:10:42 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nThank you for providing all the necessary information.\nPlease be assured that your case is currently under review by our team at SAP Product Support.\nShould you require any additional information in the interim, please feel free to reach out to us.\nHowever, if you need to engage with SAP Support before this time, please contact the SAP Customer Interaction Centre.\nFor guidance on how to contact the SAP Customer Interaction Centre, please refer to SAP Note 0000560499.\nBest Regards,\nMaiquel\nSAP Product Support", "signer": "Maiquel"}, {"at": "2026-08-11T01:52:54.000Z", "atText": "11.08.2026 02:52:54 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nSince this case has been raised in the wrong component, I am moving it to the relevant one. You shall get an update shortly on the same.\nYou can find some hints about how to manually choose components:\n3364668 - How to select/enter support component manually when creating a case - SAP for Me\nBest regards,\nSAP Support"}, {"at": "2026-08-11T12:18:38.000Z", "atText": "11.08.2026 13:18:38 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nThis incident is assigned to BC-CTS-CCO component\nThis is Asma, from EMEA region . I was just assigned to this case, and I'll help with troubleshooting.\nCan you please share the details with attachment of the issue for which changes are missing at target system and could you share the attachment step-by-step process you followed?\n3412007 - SCC1N: Few tables are not copied during the execution of copy by transport\n3652777 - Client Copy Transport-Based Corrections (TCI) September 2025 also please check if above notes has been implemented at your system or not if not make sure this could be implemented after this try to capture changes with new tr and let me know the outcome\nRegards,\nAsma", "signer": "Asma"}, {"at": "2026-08-19T07:51:54.000Z", "atText": "19.08.2026 08:51:54 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Your interaction with SAP Support\nContact name: saravanan vilvapathi\nContact phone or email: [removed]\nChannel: Call to customer\nInteraction summary:\nContact name: saravanan vilvapathi\nContact phone: [removed]\nKindly please let me know current status of the issue ?\nis the issue got resolved ?\nif no kindly please update current error details along with screenshot otherwise if issue got resolved kindly please let me know if you have any further queries\nIf not i would request you please close the incident with valuable feedback :)\nRegards,\nAsma", "signer": "Asma"}, {"at": "2026-08-21T08:26:49.000Z", "atText": "21.08.2026 09:26:49 CET", "type": "Info for SAP", "author": "saravanan vilvapathi", "party": "proj", "text": "Hello Asma,\nAs requested by you, we tried implementing the 2 notes and after implementing successfully we re-tested the scenario and we are facing the same issue.\nCan you please check? Can you also confirm your availability for a working session on Monday or Tuesday?\nThanks & regards,\nSaravanan V.\nInternational BASIS team."}, {"at": "2026-08-21T08:26:52.000Z", "atText": "21.08.2026 09:26:52 CET", "type": "Info for Customer", "author": "(system)", "party": "system", "text": "Dear customer,\nYou will receive an update about this incident on 24.08.2026 before 15:29:59(Asia/Kolkata). However, if you need to engage with SAP Support before this time, please contact the SAP Customer\nThank you,"}, {"at": "2026-08-21T09:50:47.000Z", "atText": "21.08.2026 10:50:47 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nSure please let me know your available time on monday so that we can schedule the call accordingly\nPlease note that my shift time in between 12:30pm IST to 8:30pm IST\nRegards,\nAsma", "signer": "Asma"}, {"at": "2026-08-21T14:45:44.000Z", "atText": "21.08.2026 15:45:44 CET", "type": "Info for SAP", "author": "saravanan vilvapathi", "party": "proj", "text": "Hello Asma,\nCan you please share the invite to below attendees for 6pm IST on Monday?\nPhani.Kasiraju@…\nHema.Yalamanchili@… Saravanan.Vilvapathi@… Girish.Ogirala@…\nMurali.Kurra@…\nThanks & regards,\nSaravanan V.\nInternational BASIS team."}, {"at": "2026-08-21T15:56:18.000Z", "atText": "21.08.2026 16:56:18 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nI have scheduled the call between 4:00pm IST to 6:00pm IST\nCan you please let me know alternate time details so that i will send the invite link accordingly\nRegards,\nAsma", "signer": "Asma"}, {"at": "2026-08-21T16:18:04.000Z", "atText": "21.08.2026 17:18:04 CET", "type": "Info for SAP", "author": "saravanan vilvapathi", "party": "proj", "text": "Hi Asma,\nDo you mean to say you are occupied until 6pm IST? We are requesting your invite for 6-6.30 pm IST actually.\nAlso we are in SIT1 testing window so team is fully equipped from\n6.30pm IST until 10.30 pm IST. And before 6pm IST it would be difficult for US folks to join, hence the ideal 6-6.30pm IST window. Can you please try for the same please? If not you can push it t\n5.45 pm to 6.15 pm IST but not anything before please.\nThanks & regards,\nSaravanan V.\nInternational BASIS team."}, {"at": "2026-08-24T06:51:10.000Z", "atText": "24.08.2026 07:51:10 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team, th\nI have scheduled the call at 6:00pm IST on 24 aug 2026\nPlease join the call\nRegards,\nASMA\n________________________________________________________________________________\nMicrosoft Teams meeting\nJoin: [meeting link removed]\nMeeting ID: [removed]\nPasscode: [removed]", "signer": "Asma"}, {"at": "2026-08-24T14:09:14.000Z", "atText": "24.08.2026 15:09:14 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Your interaction with SAP Support\nContact name: saravanan vilvapathi\nContact phone or email: [removed]\nChannel: Call to customer\nInteraction summary:\nContact name: saravanan vilvapathi\nContact phone: [removed]\nJoined the call and discussed about the issue"}, {"at": "2026-08-24T14:10:21.000Z", "atText": "24.08.2026 15:10:21 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nThanks for your time over the call\nCan you please help to attach the all the step-by-step process you did over the call to reproduce the issue please\nRegards,\nAsma", "signer": "Asma"}, {"at": "2026-08-24T19:02:32.000Z", "atText": "24.08.2026 20:02:32 CET", "type": "Info for SAP", "author": "saravanan vilvapathi", "party": "proj", "text": "Attachment uploaded"}, {"at": "2026-08-24T19:02:35.000Z", "atText": "24.08.2026 20:02:35 CET", "type": "Info for Customer", "author": "(system)", "party": "system", "text": "Dear customer,\nYou will receive an update about this incident on 25.08.2026 before 15:29:59(Asia/Kolkata). However, if you need to engage with SAP Support before this time, please contact the SAP Customer\nThank you,"}, {"at": "2026-08-25T10:20:27.000Z", "atText": "25.08.2026 11:20:27 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nKinndly request you please be patience\nWe are checking the issue internally you will get update Asap\nRegards,\nAsma", "signer": "Asma"}, {"at": "2026-08-25T11:54:04.000Z", "atText": "25.08.2026 12:54:04 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nI would like to inform you that this incident has been forwarded to the component BC-CUS-TOL-MBC\nOne of colleague from that team will reach you shortly\nRegards,\nAsma\nExternal|on Behalf of SAP Support", "signer": "Asma"}, {"at": "2026-08-25T12:28:03.000Z", "atText": "25.08.2026 13:28:03 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hello, in transaction SE11, perform the syntax check for table ZTDEV_COMMON_CBC.\nYou will get a warning that because the key length exceeds 120, transport functions are restricted.\nTable contents cannot be transported by specifying key values, at most, by specifying generic key values with a maximum length of 120 bytes.\nHowever, the RAP BO generated by the ADT wizard does not takes this limitation into account. The transport framework then tries to select records with a truncated key and does not find the rec\nIf you think the field ADDITIONAL_ID must have a length of 255 you need to adjust the save_modified method in the behavior implementation class and record entries with asterisk as wildcards.\nIdeally the ADT wizard should not allow to generate the SMBC app for such tables.\nRegards,\nPatrick\nSAP Engineering Support", "signer": "Patrick"}, {"at": "2026-09-11T07:11:28.000Z", "atText": "11.09.2026 08:11:28 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hello,\nI will retrieve the incident because it seems the recording on TR DS4K903354 was correct. That is, there are entries in table E071K_STR avoiding the issue with long keys.\nI will forward the incident to the SCC1N colleagues.\nRegards,\nPatrick\nSAP Engineering Support", "signer": "Patrick"}, {"at": "2026-09-11T12:38:23.000Z", "atText": "11.09.2026 13:38:23 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hi Team,\nThe incident is with CTS - development support.\nThe processor is checking the issue internally, you will be updated soon on the case.\nRegards,\nSAP Support"}, {"at": "2026-09-14T12:18:43.000Z", "atText": "14.09.2026 13:18:43 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nKindly note that there is currently a national Bank holiday in India, thus I'd like to ask for a bit of patience.\nThank you for your understanding.\nBest regards,\nTamas\nSAP Support - Queue manager", "signer": "Tamas"}, {"at": "2026-09-14T17:35:43.000Z", "atText": "14.09.2026 18:35:43 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nYou should receive an update about this case before the end of 2026.09.16. However, if you need to engage with SAP Support before this time, please contact the SAP\nCustomer Interaction Center.\nFor guidance on how to contact the SAP Customer Interaction Center, please refer to SAP Note 0000560499 -\nCustomer Interaction Center: Hotline - Email - Chat.\nThank you,\nSAP Support"}, {"at": "2026-09-17T05:43:17.000Z", "atText": "17.09.2026 06:43:17 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear team,\nThe case is in our analyzing internally according to the current provided information.\nIf you have new information or evidence for this issue, appreciate that you can add them into the case.\nThanks for your assistance.\nBest regards,\nSAP SUPPORT"}, {"at": "2026-09-18T10:24:39.000Z", "atText": "18.09.2026 11:24:39 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nWe would like to inform you that this Case is under processing by SAP Development team. We will provide you with updates on any progress made.\nPlease note that the Development team operates during standard business hours based on regional time zones. Therefore, please excuse any potential delays.\nBest Regards,\nSAP Support"}, {"at": "2026-09-21T10:01:02.000Z", "atText": "21.09.2026 11:01:02 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Hello Team,\nThank you for update.\nWe would like to inform you that this Case is under processing by SAP Development team.The processor will provide you with updates on your query soon.\nPlease note that the Development team operates during standard business hours based on regional time zones.Therefore, please excuse any potential delays.\nRegards,\nQM"}, {"at": "2026-09-21T11:22:35.000Z", "atText": "21.09.2026 12:22:35 CET", "type": "Info for Customer", "author": "(system)", "party": "system", "text": "We've identified this case as a cloud infrastructure issue and transferred it to the relevant group for further processing."}, {"at": "2026-09-21T11:33:01.000Z", "atText": "21.09.2026 12:33:01 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nWe are checking on this request internally.\nWe will provide an update at the earliest.\nRegards,\nKiran\nSAP Enterprise Cloud Services Delivery", "signer": "Kiran"}, {"at": "2026-09-21T13:41:52.000Z", "atText": "21.09.2026 14:41:52 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nAs a next step, please implement SAP Note 3652777 - Client Copy Transport-Based Corrections (TCI) September 2025 and re-run the client copy using a fresh transport containing the affected\nKindly share the outcome of the client copy for further analysis.\nRegards,\nKiran", "signer": "Kiran"}, {"at": "2026-09-21T13:54:19.000Z", "atText": "21.09.2026 14:54:19 CET", "type": "Info for SAP", "author": "saravanan vilvapathi", "party": "proj", "text": "Hello Kiran,\nAm not sure if you read the case history before providing the suggestion. The same note was suggested around August 11 and it was implemented and tested as well, the same issue prevails is what we replied back during the testing. Kindly check and provide an alternate solution.\nThanks & regards,\nSaravanan V.\nInternational BASIS team."}, {"at": "2026-09-21T14:53:36.000Z", "atText": "21.09.2026 15:53:36 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nWe are checking on this request internally.\nWe will provide an update at the earliest.\nRegards,\nKiran\nSAP Enterprise Cloud Services Delivery", "signer": "Kiran"}, {"at": "2026-09-21T16:56:11.000Z", "atText": "21.09.2026 17:56:11 CET", "type": "Info for Customer", "author": "SAP", "party": "sap", "text": "Dear Customer,\nWe have reviewed the transport request DS4K903354 from the source client and confirmed the following:\nThe transport request has been successfully released.\nThe transport contains customizing table content for ZCOMMON_CBC.\nThe required entries are present in the transport request and have been captured from Client 100.\nAs our access is limited to Client 100, we are unable to verify the import status or data availability in Client 110.\nCould you please help with the following checks from Client 110:\nVerify whether SCC1N completed successfully without any errors.\nShare the SCC1N execution log and SCC3 log.\nVerify whether the transported entries are available in the respective Custom Business Configuration application.\nCheck whether the entries exist in the target table after import.\nShare screenshots of the application and relevant table entries from\nClient 110.\nAdditionally, as per the guidance received from the Custom Business Configuration application team, SCC1N is not the recommended transport mechanism for Custom Business\nConfiguration objects. SAP recommends using the Configure Software Package (F1590) and Register Extensions for Transport (F1589) applications for transporting such objects.\nAt this stage, no issue has been identified from the SAP Basis side in Client 100, as the transport request is released and contains the required table entries.Kindly share the requested details from Client 110 so that we can continue the investigation.\nRegards, kiran", "signer": "Kiran"}], "notes": [{"num": "3412007", "title": "SCC1N: Few tables are not copied during the execution of copy by transport"}, {"num": "560499", "title": "Customer Interaction Center: Hotline - Chat - Online Form"}, {"num": "3657431", "title": "SCC1N | SCU3 | No logs are shown"}, {"num": "2857", "title": "What table delivery classes exist? What do they mean?"}], "attachments": [{"name": "Custom Business Configuration Transport Process.docx", "by": "Project", "date": "24.08.2026"}, {"name": "Evidence of WORK_DS4VWC.docx", "by": "SAP", "date": "21.09.2026"}], "log": [{"at": "2026-08-10T16:19:18.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "priority", "old": "Medium", "new": "Very High"}, {"at": "2026-08-10T16:19:18.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "created"}, {"at": "2026-08-10T16:19:18.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "component", "old": "", "new": "BC-CTS-CCO"}, {"at": "2026-08-10T16:20:12.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "priority", "old": "Very High", "new": "High"}, {"at": "2026-08-10T16:20:12.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "component", "old": "BC-CTS-CCO", "new": "BC-CUS-TOL-TME"}, {"at": "2026-08-10T16:22:57.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "status", "old": "Not Sent to SAP", "new": "Sent to SAP"}, {"at": "2026-08-10T23:30:11.000Z", "by": "SAP", "party": "sap", "action": "note", "new": "3657431"}, {"at": "2026-08-10T23:30:11.000Z", "by": "SAP", "party": "sap", "action": "note", "new": "560499"}, {"at": "2026-08-10T23:30:11.000Z", "by": "SAP", "party": "sap", "action": "note", "new": "2857"}, {"at": "2026-08-10T23:30:11.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Sent to SAP", "new": "In Processing by SAP"}, {"at": "2026-08-10T23:52:57.000Z", "by": "SAP", "party": "sap", "action": "component", "old": "BC-CUS-TOL-TME", "new": "BC-CTS-CCO"}, {"at": "2026-08-11T10:18:41.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}, {"at": "2026-08-21T06:26:54.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "status", "old": "Customer Action", "new": "Sent to SAP"}, {"at": "2026-08-21T06:26:55.000Z", "by": "SAP", "party": "sap", "action": "note", "new": "3412007"}, {"at": "2026-08-21T06:26:55.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Sent to SAP", "new": "In Processing by SAP"}, {"at": "2026-08-21T07:50:53.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}, {"at": "2026-08-21T12:45:46.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "status", "old": "Customer Action", "new": "Sent to SAP"}, {"at": "2026-08-21T12:45:49.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Sent to SAP", "new": "In Processing by SAP"}, {"at": "2026-08-21T13:56:22.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}, {"at": "2026-08-21T14:18:06.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "status", "old": "Customer Action", "new": "Sent to SAP"}, {"at": "2026-08-21T14:18:07.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Sent to SAP", "new": "In Processing by SAP"}, {"at": "2026-08-24T04:51:14.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}, {"at": "2026-08-24T17:02:35.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "status", "old": "Customer Action", "new": "Sent to SAP"}, {"at": "2026-08-24T17:02:36.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Sent to SAP", "new": "In Processing by SAP"}, {"at": "2026-08-25T09:54:10.000Z", "by": "SAP", "party": "sap", "action": "component", "old": "BC-CTS-CCO", "new": "BC-CUS-TOL-MBC"}, {"at": "2026-08-25T10:28:07.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}, {"at": "2026-09-11T05:11:34.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Customer Action", "new": "In Processing by SAP"}, {"at": "2026-09-11T05:23:27.000Z", "by": "SAP", "party": "sap", "action": "component", "old": "BC-CUS-TOL-MBC", "new": "BC-CTS-CCO"}, {"at": "2026-09-21T09:22:42.000Z", "by": "SAP", "party": "sap", "action": "component", "old": "BC-CTS-CCO", "new": "PCO-OPS-BAS"}, {"at": "2026-09-21T11:41:55.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}, {"at": "2026-09-21T11:54:23.000Z", "by": "saravanan vilvapathi (S0027782229)", "party": "proj", "action": "status", "old": "Customer Action", "new": "Sent to SAP"}, {"at": "2026-09-21T11:54:25.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "Sent to SAP", "new": "In Processing by SAP"}, {"at": "2026-09-21T14:56:13.000Z", "by": "SAP", "party": "sap", "action": "status", "old": "In Processing by SAP", "new": "Customer Action"}], "printedAt": "2026-10-04T21:32:01.000Z", "number": "1037232", "year": "2026", "title": "TR data doesn't showup in target client after SCC1N", "id": "1037232-2026", "analysis": {"headline": "Settings copied from client 100 to client 110 never arrive. After 8 weeks and 5 hand-offs between SAP teams there's still no root cause, and the case auto-closes on 12 Oct unless the project replies.", "plainSummary": "The project keeps a small table of settings (maintained in the 'Common CBC' app, table ZTDEV_COMMON_CBC) in the development system DS4. That system has two separate working areas, called clients: 100, where changes are made, and 110, where they are tested. The team records new entries in a transport request in client 100 and uses SAP's copy tool SCC1N to copy them into client 110. The copy log says it succeeded, but the entries never appear in client 110. Other tables copy fine; only this one fails. As a stopgap the team types the entries into client 110 by hand, which needs a short-lived approval to open that client each time.", "analogy": "Like a photocopier that reports 'done' but leaves the tray empty, and only for one particular form.", "businessImpact": "Logged as a critical SIT1 test defect that needed a fix within one day. Without a permanent fix, SIT1 completion and possibly go-live are at risk, and the manual workaround depends on temporary approvals to change client 110.", "currentState": "Waiting on the project team since 21 Sep 2026. SAP Enterprise Cloud Services asked for evidence from client 110: the SCC1N run log, the SCC3 log, and screenshots of the app and of the table. They also said SCC1N isn't the recommended way to move this type of object. If the project doesn't reply, SAP will treat the case as solved on 12 Oct 2026.", "rootCause": {"status": "unknown", "text": "Not found yet. On 25 Aug SAP engineering support suspected the table's key is too long (over 120 characters) for transport-based copying. On 11 Sep they withdrew this because the transport had recorded the entries correctly. SAP has confirmed the transport itself is fine; nobody has yet explained why the copy into client 110 doesn't write the entries."}, "sapRecommendations": [{"what": "Implement SAP Notes 3412007 and 3652777 (client copy corrections), then capture the change in a new transport and retry", "plain": "Apply two SAP fixes for the copy tool and try again", "by": "SAP Support (Asma, client copy team)", "date": "11.08.2026", "status": "implemented", "result": "Implemented by the project and retested on 21.08.2026: same problem."}, {"what": "Hold a working session and attach the step-by-step process used to reproduce the issue", "plain": "Show SAP the problem live and document the steps", "by": "SAP Support (Asma)", "date": "21.08–24.08.2026", "status": "implemented", "result": "Call held 24.08.2026; the project uploaded the process document the same day."}, {"what": "Check table ZTDEV_COMMON_CBC in SE11: its key is longer than 120 bytes, which restricts transport. If the 255-character field is really needed, change the app's save logic (save_modified) to record entries with wildcards", "plain": "SAP suspected the table's identifying key is too long for the copy tool and suggested a code change", "by": "SAP Engineering Support (Patrick, CBC team)", "date": "25.08.2026", "status": "superseded", "result": "Withdrawn by SAP on 11.09.2026: the transport recorded the entries correctly. The project never replied to this message; the case sat with the project for more than two weeks until SAP took it back."}, {"what": "Implement SAP Note 3652777 and re-run the client copy with a fresh transport", "plain": "Apply the same copy-tool fix again", "by": "SAP Enterprise Cloud Services (Kiran)", "date": "21.09.2026", "status": "already done", "result": "The project replied that this was already implemented and tested in August without success, and asked for an alternative."}, {"what": "From client 110, send the SCC1N execution log, the SCC3 log, screenshots of the Custom Business Configuration app and of the table entries", "plain": "Send proof of what happens in client 110", "by": "SAP Enterprise Cloud Services (Kiran)", "date": "21.09.2026", "status": "pending", "result": "Not answered yet. This is what the auto-close clock is waiting for."}, {"what": "Don't use SCC1N for Custom Business Configuration objects; use the apps Configure Software Package (F1590) and Register Extensions for Transport (F1589)", "plain": "SAP says the project uses the wrong tool for this kind of setting", "by": "SAP Enterprise Cloud Services (Kiran), citing the CBC app team", "date": "21.09.2026", "status": "pending", "result": "Not evaluated yet. It's unclear whether these apps cover copying between two clients of the same system."}], "projectActions": [{"date": "10.08.2026", "what": "Reported the issue with Very High priority, then set it to High", "result": "Checked the SCC3 copy log (successful, not a test run), confirmed in SE01 that the transport contains the table and entries, and retried with a new transport and new entries: same result."}, {"date": "10.08.2026", "what": "Workaround: opened client 110 and entered the data by hand", "result": "Works, but each time needs a temporary approval."}, {"date": "10.08.2026", "what": "Stored SAP logon details for clients 100 and 110 in the secure area", "result": "SAP later said its access was limited to client 100."}, {"date": "21.08.2026", "what": "Implemented Notes 3412007 and 3652777 and retested", "result": "Same problem. Asked SAP for a working session."}, {"date": "24.08.2026", "what": "Joined the working session and uploaded the step-by-step process document", "result": "SAP moved the case to the Custom Business Configuration team the next day."}, {"date": "21.09.2026", "what": "Pushed back on the repeated advice to implement Note 3652777", "result": "SAP replied the same day with requests for client 110 evidence and the recommendation to use other apps."}], "contention": [{"topic": "SAP repeated a fix that was already tried", "sapPosition": "On 21 Sep: implement Note 3652777 and re-run the copy.", "projectPosition": "This was suggested on 11 Aug, implemented and tested by 21 Aug, and didn't help. 'Not sure if you read the case history.'", "whyItMatters": "Each new SAP team restarted from scratch, costing weeks on an SIT-critical defect.", "severity": "high"}, {"topic": "Is SCC1N the right tool?", "sapPosition": "SCC1N isn't recommended for Custom Business Configuration objects; use Configure Software Package (F1590) and Register Extensions for Transport (F1589).", "projectPosition": "SCC1N works for the other tables, and SAP confirmed the transport content is correct. The project copies between two clients of the same system, not between systems.", "whyItMatters": "If SAP is right, the process has to change. If not, SAP still owes a fix. Either way this needs a clear written answer before go-live.", "severity": "high"}, {"topic": "Access to client 110", "sapPosition": "Our access is limited to client 100, so we can't check client 110.", "projectPosition": "Logon details for both clients 100 and 110 were stored in the secure area when the case was opened.", "whyItMatters": "SAP is asking the project to collect evidence that SAP could check directly.", "severity": "medium"}, {"topic": "Who owns the root cause", "sapPosition": "The case moved between client copy, table maintenance, Custom Business Configuration, client copy again, and finally cloud Basis operations. A key-length theory was raised and then withdrawn.", "projectPosition": "Needs a permanent fix; the workaround relies on short-term approvals.", "whyItMatters": "55 days on a High-priority SIT defect without an owner for the root cause.", "severity": "high"}, {"topic": "Which table did SAP check?", "sapPosition": "SAP's 21 Sep review refers to table ZCOMMON_CBC.", "projectPosition": "The project's table is ZTDEV_COMMON_CBC.", "whyItMatters": "If SAP looked at a different table, its conclusion that the transport is fine may not apply.", "severity": "medium"}, {"topic": "Unanswered key-length analysis", "sapPosition": "On 25 Aug SAP asked for a syntax check of the table in SE11 and explained the key-length limit.", "projectPosition": "No reply is recorded; the case waited more than two weeks until SAP took it back on 11 Sep.", "whyItMatters": "Silence on the project side also cost time and lets SAP argue the ball was with the customer.", "severity": "low"}], "actionItems": [{"owner": "Project team", "action": "Post the client 110 evidence in the incident: SCC1N execution log, SCC3 log, screenshots of the Common CBC app and of table ZTDEV_COMMON_CBC in client 110", "plain": "Send SAP the proof they asked for", "due": "11.10.2026", "priority": "now", "source": "SAP, 21.09.2026"}, {"owner": "Project team", "action": "State the correct table name ZTDEV_COMMON_CBC and ask SAP to confirm they reviewed that table, not ZCOMMON_CBC", "plain": "Make sure SAP checked the right table", "due": "11.10.2026", "priority": "now", "source": "SAP, 21.09.2026"}, {"owner": "Project team", "action": "Remind SAP that logon for clients 100 and 110 is in the secure area and ask them to verify client 110 directly", "plain": "Point SAP to the access they already have", "due": "11.10.2026", "priority": "now", "source": "Project, 10.08.2026"}, {"owner": "Both", "action": "Ask SAP for a written answer: is SCC1N supported for Custom Business Configuration tables between clients of the same system, and do F1590/F1589 cover client-to-client copies? Evaluate the apps in a sandbox", "plain": "Settle whether the copy tool is the wrong tool", "due": "", "priority": "soon", "source": "SAP, 21.09.2026"}, {"owner": "Project team", "action": "Run the SE11 syntax check on ZTDEV_COMMON_CBC that SAP asked for on 25 Aug and record the result in the case", "plain": "Close the open question about the table's key length", "due": "", "priority": "soon", "source": "SAP, 25.08.2026"}, {"owner": "Project team", "action": "Decide on escalation: the defect is SIT-critical and the case is 55 days old. Use the SAP Customer Interaction Center (Note 560499) or your ECS escalation contacts", "plain": "Escalate if SAP doesn't move quickly", "due": "", "priority": "soon", "source": "Business impact, 10.08.2026"}, {"owner": "SAP", "action": "Provide the root cause, or engage SAP development, once the client 110 evidence is posted", "plain": "SAP to find out why the copy doesn't arrive", "due": "", "priority": "later", "source": "Case history"}], "risks": ["The case auto-closes on 12 Oct 2026 if the project doesn't reply, and the problem stays unsolved.", "The workaround depends on temporary approvals to change client 110, which is weak for audit and controls.", "Entries typed by hand in client 110 can drift from client 100.", "If SCC1N really isn't supported for these tables, the transport process for CBC content has to change before go-live."], "nextBestStep": "This week, post the client 110 logs and screenshots, correct the table name, and point SAP to its client 110 access. Ask for a written answer on whether SCC1N is supported for these tables. That also stops the auto-close clock.", "draftReply": "Hello Kiran,\n\nThank you for the review. To keep this moving, please find the following from client 110 (DS4-110) attached:\n1. SCC1N execution log for transport DS4K903354\n2. SCC3 log of the same run (status: successful, not a test run)\n3. Screenshot of the Common CBC app in client 110 showing the entries are missing\n4. Screenshot of table ZTDEV_COMMON_CBC in client 110 (SE16)\n\nPlease note:\n- Our table is ZTDEV_COMMON_CBC. Your update mentions ZCOMMON_CBC; could you confirm which table you reviewed?\n- Logon details for both DS4-100 and DS4-110 have been in the secure area since 10.08.2026, so you can verify client 110 directly.\n- Notes 3412007 and 3652777 were implemented and retested on 21.08.2026 with the same result.\n\nOn the recommendation to use Configure Software Package (F1590) and Register Extensions for Transport (F1589): we copy between two clients of the same system. Please confirm in writing whether SCC1N is supported for Custom Business Configuration tables in this scenario, and whether F1590/F1589 cover client-to-client copies.\n\nThis is a critical SIT1 defect and the case has been open since 10.08.2026. We'd appreciate SAP development involvement and a working session this week.\n\nThanks & regards,\nInternational BASIS team", "glossary": [{"term": "Client 100 / client 110", "meaning": "Two separate working areas in the same SAP system DS4. Changes are made in 100 and tested in 110."}, {"term": "SCC1N", "meaning": "SAP's tool for copying the settings in a transport request from one client to another in the same system."}, {"term": "Common CBC app", "meaning": "A Custom Business Configuration app in SAP Build Work Zone where the team maintains the settings table ZTDEV_COMMON_CBC."}, {"term": "E071K_STR", "meaning": "Internal SAP table that stores long key values recorded in a transport. SAP used it to confirm the transport captured the entries."}, {"term": "TCI (Transport-Based Correction Instruction)", "meaning": "A way SAP delivers code fixes as a transport, used by Note 3652777."}]}, "analysisSource": "prepared", "analysisFor": 33, "analysisAt": "2026-10-04T21:00:00.000Z", "fileName": "SAP_Incident_10372322026.pdf"}};
+
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DAY = 86400000;
+const tzOffset = tz => ({CET:1, CEST:2, UTC:0, GMT:0, IST:5.5, EST:-5, EDT:-4, PST:-8, PDT:-7}[tz] ?? 1);
+function toDate(d, t="00:00:00", tz="CET"){
+  const m = d.match(/(\d{2})\.(\d{2})\.(\d{4})/); if (!m) return null;
+  const [hh,mm,ss] = t.split(":").map(Number);
+  return new Date(Date.UTC(+m[3], +m[2]-1, +m[1], hh||0, mm||0, ss||0) - tzOffset(tz)*3600000);
+}
+const sapDay = s => { const m = String(s||"").match(/(\d{2})\.(\d{2})\.(\d{4})/); return m ? new Date(+m[3], +m[2]-1, +m[1]).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}) : (s||"–"); };
+const fmtD = d => d ? d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}) : "–";
+const fmtDT = d => d ? d.toLocaleString(undefined,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "–";
+const days = ms => ms/DAY;
+const plural = (n,w) => `${n} ${w}${n===1?"":"s"}`;
+function dur(ms){ const d = Math.floor(ms/DAY), h = Math.floor(ms%DAY/3600000); return d ? `${d}d ${h}h` : `${h}h ${Math.floor(ms%3600000/60000)}m`; }
+function mask(t){
+  return String(t)
+    .replace(/(?:href|target|rel)="[^"]*"\s*>?/g,"")
+    .replace(/https?:\/\/teams\.microsoft\.com\S*/gi,"[meeting link removed]")
+    .replace(/(Passcode:\s*)\S+/gi,"$1[removed]").replace(/(Meeting ID:\s*)[\d ]+/gi,"$1[removed]")
+    .replace(/\+\d[\d ()-]{7,}\d/g,"[phone removed]")
+    .replace(/(Contact phone(?: or email)?:\s*)[^\n]+/gi,"$1[removed]")
+    .replace(/\b([\w.+-]+)@[\w-]+(?:\.[\w-]+)*/g,"$1@…");
+}
+
+/* =====================================================================
+   Plain-language dictionaries
+   ===================================================================== */
+const STATUS_PLAIN = {
+  "Not Sent to SAP":{who:"proj", text:"Draft, not yet sent to SAP"},
+  "Sent to SAP":{who:"sap", text:"Waiting for SAP to pick it up"},
+  "In Processing by SAP":{who:"sap", text:"SAP is working on it"},
+  "Customer Action":{who:"proj", text:"Waiting for the project team to respond"},
+  "Author Action":{who:"proj", text:"Waiting for the person who opened the case"},
+  "Partner Action":{who:"sap", text:"Waiting for an SAP partner"},
+  "SAP Proposed Solution":{who:"proj", text:"SAP proposed a solution; waiting for the project to confirm"},
+  "Solution Provided":{who:"proj", text:"SAP considers it solved; waiting for the project to confirm"},
+  "Confirmed":{who:"none", text:"Closed"},
+  "Confirmed Automatically":{who:"none", text:"Closed automatically"},
+  "On Hold":{who:"none", text:"On hold"}
+};
+const STATUS_RE = /Not Sent to SAP|Sent to SAP|In Processing by SAP|Customer Action|Author Action|Partner Action|SAP Proposed Solution|Solution Provided|Confirmed Automatically|Confirmed|On Hold/g;
+const PRIORITY_PLAIN = {"Very High":"SAP's most urgent level: production down or go-live at risk","High":"Important business process seriously affected","Medium":"Business process affected, workaround possible","Low":"Minor problem or question"};
+const COMPONENT_PLAIN = {
+  "BC-CTS-CCO":"SAP team for client copy (copying data between clients)",
+  "BC-CTS-ORG":"SAP team for the transport organizer",
+  "BC-CTS-TMS":"SAP team for transport management",
+  "BC-CTS":"SAP team for change and transport",
+  "BC-CUS-TOL-TME":"SAP team for table maintenance tools",
+  "BC-CUS-TOL-MBC":"SAP team for Custom Business Configuration apps",
+  "BC-CUS-TOL":"SAP team for customizing tools",
+  "PCO-OPS-BAS":"SAP Enterprise Cloud Services, Basis operations (runs your private cloud system)",
+  "BC-DB-HDB":"SAP team for the SAP HANA database",
+  "BC-UPG":"SAP team for upgrades",
+  "BC-SEC":"SAP team for security",
+  "BC-ABA":"SAP team for ABAP runtime",
+  "BC-SRV-APS":"SAP team for application services",
+  "CA-FLP":"SAP team for the Fiori launchpad",
+  "SD":"SAP team for sales and distribution",
+  "FI":"SAP team for finance",
+  "MM":"SAP team for materials management"
+};
+function compPlain(code){
+  if (!code) return "";
+  if (COMPONENT_PLAIN[code]) return COMPONENT_PLAIN[code];
+  const parts = code.split("-");
+  for (let i=parts.length-1;i>0;i--){ const k = parts.slice(0,i).join("-"); if (COMPONENT_PLAIN[k]) return COMPONENT_PLAIN[k]; }
+  return "SAP support team "+code;
+}
+const GLOSSARY = [
+  ["Client", /\bclients?\b|DS4-1\d0|\b1[01]0 client/i, "A separate working area inside one SAP system, with its own data and settings. For example client 100 for building and client 110 for testing."],
+  ["SCC1N", /SCC1N/, "SAP tool that copies the settings recorded in a transport request from one client into another client of the same system."],
+  ["SCC3", /SCC3/, "Screen that shows the log of a client copy, including whether it succeeded."],
+  ["Transport request (TR)", /\bTR\b|transport request|DS4K\d+/i, "A package that records changes so they can be moved to another client or system in a controlled way."],
+  ["Customizing", /customizing/i, "Settings that control how SAP behaves for your company, as opposed to program code or business data."],
+  ["Custom Business Configuration (CBC)", /\bCBC\b|Custom Business Configuration/i, "Small apps that let people maintain company-specific settings tables in SAP Fiori instead of the classic screens."],
+  ["SE01 / SE11", /\bSE0?1\b|\bSE11\b/, "Classic SAP screens: SE01 shows transport requests and their contents; SE11 shows table definitions."],
+  ["SIT", /\bSIT\d?\b/, "System Integration Test: the project phase where end-to-end business processes are tested before go-live."],
+  ["Go-live", /go-?live/i, "The date the new system starts being used for real business."],
+  ["ECS", /\bECS\b|Enterprise Cloud Services/i, "SAP Enterprise Cloud Services: the SAP team that operates the private cloud system on the customer's behalf."],
+  ["SAP Note / KBA", /SAP Note|\bKBA\b|\bNotes?\b \d{6,7}/i, "SAP's official fix or knowledge article. A Note can contain a code correction that must be implemented in the system."],
+  ["Component", /component/i, "The SAP product area and support team a case is assigned to. A change of component means the case moved to another SAP team."],
+  ["Customer Action", /Customer Action/i, "Case status meaning SAP is waiting for the customer. While in this status the auto-close clock runs."],
+  ["Auto-confirmation", /Automatic Confirmation/i, "If the customer doesn't respond, SAP closes the case on this date and treats it as solved."],
+  ["RAP BO / ADT wizard", /RAP BO|ADT/i, "Developer tooling: the wizard in ABAP Development Tools generated the business object behind the CBC app."],
+  ["Key length", /key length/i, "The combined length of the fields that identify a table row. Very long keys can limit what transport tools can do."],
+  ["F1590 / F1589", /F159\d|F158\d/i, "Fiori apps 'Configure Software Package' and 'Register Extensions for Transport', used to transport key-user extensions."],
+  ["Secure area", /secure area/i, "Protected place in SAP for Me where the customer stores logon data so SAP support can access the system."],
+  ["Priority", /priority/i, "How urgent the case is for SAP: Very High, High, Medium or Low. Very High is reserved for production down or a go-live in danger."]
+];
+
+/* =====================================================================
+   PDF → lines (pdf.js, run in the page)
+   ===================================================================== */
+async function pdfToLines(buf){
+  const lib = window.pdfjsLib;
+  if (!lib) throw new Error("The PDF reader didn't load.");
+  lib.GlobalWorkerOptions.workerSrc = lib.GlobalWorkerOptions.workerSrc || "";
+  const doc = await lib.getDocument({data:new Uint8Array(buf), isEvalSupported:false, disableWorker:true}).promise;
+  const out = [];
+  for (let n=1; n<=doc.numPages; n++){
+    const tc = await (await doc.getPage(n)).getTextContent();
+    const items = tc.items.filter(i=>i.str).map(i=>({s:i.str, x:i.transform[4], y:i.transform[5], w:i.width, h:Math.abs(i.transform[3])||10}));
+    items.sort((a,b)=>(b.y-a.y)||(a.x-b.x));
+    const lines = [];
+    for (const it of items){
+      let L = lines.find(l=>Math.abs(l.y-it.y) <= Math.max(2, it.h*0.35));
+      if (!L){ L = {y:it.y, items:[]}; lines.push(L); }
+      L.items.push(it);
+    }
+    lines.sort((a,b)=>b.y-a.y);
+    for (const L of lines){
+      L.items.sort((a,b)=>a.x-b.x);
+      let s = "", end = null;
+      for (const it of L.items){ if (end !== null){ const gap = it.x-end; if (gap > 1.2 && !s.endsWith(" ") && !it.s.startsWith(" ")) s += " "; } s += it.s; end = it.x+it.w; }
+      if (s.trim()) out.push(s.replace(/[  \t]+/g," ").trim());
+    }
+  }
+  return out;
+}
+
+/* =====================================================================
+   Incident parser (SAP for Me print layout)
+   ===================================================================== */
+function parseIncident(lines){
+  const L = lines.filter(l=>l && !/^(?:userapps\.)?support\.sap\.com|^about:blank|^\d+\s*\/\s*\d+$/.test(l));
+  const c = {header:{}, messages:[], notes:[], attachments:[], log:[], printedAt:null};
+  const first = L.find(l=>/^Incident:/i.test(l));
+  if (!first) throw new Error("This PDF doesn't look like an SAP incident print (no 'Incident:' line).");
+  const fm = first.match(/^Incident:\s*(\d+)\s*\/\s*(\d{4})\s*-\s*(.+)$/i) || [];
+  c.number = fm[1] || ""; c.year = fm[2] || ""; c.title = (fm[3]||first.replace(/^Incident:\s*/i,"")).trim();
+  c.id = (c.number && c.year) ? `${c.number}-${c.year}` : "inc-"+Math.abs([...first].reduce((h,ch)=>(h*31+ch.charCodeAt(0))|0,7));
+  const iComm = L.findIndex(l=>/^Communication$/i.test(l));
+  const iCont = L.findIndex(l=>/^Contacts$/i.test(l));
+  const iAtt = L.findIndex(l=>/^Attachments$/i.test(l));
+  const iNotes = L.findIndex(l=>/^KBA\/SAP Notes$/i.test(l));
+  const iLog = L.findIndex(l=>/^Action Log$/i.test(l));
+  const head = L.slice(0, iComm > 0 ? iComm : 15);
+  const labels = [["Estimated Automatic Confirmation Date","autoConfirm"],["Installation","installation"],["Component","component"],["Customer","customer"],["Priority","priority"],["Status","status"],["System","system"],["ID","caseId"]];
+  head.forEach(l=>{ for (const [lab,key] of labels){ if (l.startsWith(lab+" ") && !c.header[key]){ c.header[key] = l.slice(lab.length).trim(); break; } } });
+  const compCode = (c.header.component||"").match(/\(([A-Z][A-Z0-9-]+)\)\s*$/) || (c.header.component||"").match(/^([A-Z]{2,}(?:-[A-Z0-9]+)+)/);
+  c.header.componentCode = compCode ? compCode[1] : "";
+  // Communication
+  const endComm = [iCont, iAtt, iNotes, iLog].filter(i=>i>iComm).sort((a,b)=>a-b)[0] ?? L.length;
+  let cur = null;
+  for (const l of L.slice(iComm+1, endComm)){
+    const m = l.match(/^(\d{2}\.\d{2}\.\d{4}) (\d{2}:\d{2}:\d{2}) ([A-Z]{3,4}) - ([^:]{3,40}): (.+)$/);
+    if (m){
+      const author = m[5].trim();
+      const party = /^SAP$/i.test(author) ? "sap" : /\(system\)/i.test(author) ? "system" : "proj";
+      cur = {at:toDate(m[1],m[2],m[3]).toISOString(), atText:`${m[1]} ${m[2]} ${m[3]}`, type:m[4].trim(), author:author.replace(/\s*\(S\d+\)\s*$/,""), party, lines:[]};
+      c.messages.push(cur); continue;
+    }
+    if (cur) cur.lines.push(l);
+  }
+  c.messages.forEach(m=>{
+    const joined = m.lines.join("\n").replace(/([^.:;!?\n])\n(?=[a-z(])/g,"$1 ").replace(/\n{3,}/g,"\n\n").trim();
+    m.text = mask(joined); delete m.lines;
+    if (m.party==="sap"){
+      const ls = m.text.split("\n").map(s=>s.trim()).filter(Boolean);
+      let k = -1; ls.forEach((s,i)=>{ if (/^(?:best |kind |warm )?regards[,.]?$|^thanks?(?: you)?[,.]?$|^thanks & regards[,.]?$/i.test(s)) k = i; });
+      let nm = k>=0 ? ls[k+1] : null;
+      if (!nm){ const inl = [...ls].reverse().map(s=>s.match(/^(?:best |kind |warm )?regards[,.]?\s+([A-Za-z]{2,20})$/i)).find(Boolean); if (inl) nm = inl[1]; }
+      if (nm && /^[A-Za-z]{2,20}$/.test(nm) && !/^(SAP|Team|Support|QM|Customer)$/i.test(nm)) m.signer = nm[0].toUpperCase()+nm.slice(1).toLowerCase();
+    } });
+  // Notes
+  if (iNotes > 0) L.slice(iNotes+1, iLog>iNotes ? iLog : undefined).forEach(l=>{ const m = l.match(/^(\d{3,8})\s+(.+)$/); if (m) c.notes.push({num:m[1].replace(/^0+/,""), title:m[2].trim()}); });
+  // Attachments
+  if (iAtt > 0) L.slice(iAtt+1, iNotes>iAtt ? iNotes : iLog).forEach(l=>{ const m = l.match(/^(.+?\.(?:docx?|xlsx?|pdf|png|jpe?g|txt|zip|log|csv|pptx?|msg|eml))/i); if (m && !/^File Name/i.test(l)){ const by = /\bSAP\b/.test(l.slice(m[1].length)) ? "SAP" : /\(S\d+\)/.test(l) ? "Project" : ""; const d = l.match(/(\d{2}\.\d{2}\.\d{4})/); c.attachments.push({name:m[1].trim(), by, date:d?d[1]:""}); } });
+  // Action log: stream of date / time tokens
+  if (iLog > 0){
+    const s = L.slice(iLog+1).filter(l=>!/^Changed On/i.test(l)).join(" | ");
+    const re = /(\d{2}\.\d{2}\.\d{4})|(\d{2}:\d{2}:\d{2}) ([A-Z]{3,4})/g;
+    let date = null, ev = null, last = 0, m;
+    const flush = end => { if (ev){ ev.chunk = s.slice(last, end); } };
+    while ((m = re.exec(s))){
+      if (m[1]){ flush(m.index); if (ev) { c.log.push(ev); ev = null; } date = m[1]; last = re.lastIndex; continue; }
+      flush(m.index); if (ev) c.log.push(ev);
+      ev = {at: date ? toDate(date, m[2], m[3]).toISOString() : null}; last = re.lastIndex;
+    }
+    flush(s.length); if (ev) c.log.push(ev);
+    c.log = c.log.filter(e=>e.at && e.chunk && e.chunk.replace(/[| ]/g,"")).map(e=>{
+      const ch = e.chunk.replace(/\s*\|\s*/g," ").trim();
+      const out = {at:e.at, by: /^SAP\b/.test(ch) ? "SAP" : (ch.match(/^(.+?\(S\d+\))/)||[])[1] || "", party: /\(S\d{6,}\)/.test(ch) ? "proj" : "sap"};
+      let mm;
+      if ((mm = ch.match(/\bStatus\b(.*)$/))){ const st = [...mm[1].matchAll(STATUS_RE)].map(x=>x[0]); out.action="status"; out.old = st.length>1 ? st[0] : ""; out.new = st[st.length-1] || ""; }
+      else if ((mm = ch.match(/\bComponent\s+([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)(?:\s+([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+))?/))){ out.action="component"; out.old = mm[2] ? mm[1] : ""; out.new = mm[2] || mm[1]; }
+      else if ((mm = ch.match(/Priority changed\s+(Very High|High|Medium|Low)\s+(Very High|High|Medium|Low)/))){ out.action="priority"; out.old=mm[1]; out.new=mm[2]; }
+      else if (/Case created/.test(ch)) out.action="created";
+      else if ((mm = ch.match(/SAP Note add\.\/rem\.\s+(\d+)/))){ out.action="note"; out.new = mm[1]; }
+      else if (/Memo\/Text changed/.test(ch)) out.action="memo";
+      else out.action="other";
+      return out;
+    }).filter(e=>e.action!=="memo" && e.action!=="other");
+    const pm = L.slice(-3).join(" ").match(/(\d{2}\.\d{2}\.\d{4}) (\d{2}:\d{2}:\d{2}) ([A-Z]{3,4})\s*$/);
+    if (pm) c.printedAt = toDate(pm[1],pm[2],pm[3]).toISOString();
+  }
+  if (!c.printedAt && c.messages.length) c.printedAt = c.messages[c.messages.length-1].at;
+  return c;
+}
+
+/* =====================================================================
+   Measures (no AI needed)
+   ===================================================================== */
+function measure(c){
+  const M = {};
+  const now = new Date();
+  const asOf = now;
+  const msgs = c.messages.map(m=>({...m, d:new Date(m.at)}));
+  const opened = msgs[0]?.d || (c.log[0] ? new Date(c.log[0].at) : null);
+  M.opened = opened; M.daysOpen = opened ? Math.floor(days(asOf-opened)) : null;
+  M.auto = c.header.autoConfirm ? toDate(c.header.autoConfirm, "00:00:00", "CET") : null;
+  M.left = M.auto ? M.auto - now : null;
+  const closed = /^Confirmed/.test(c.header.status||"");
+  M.closed = closed;
+  M.waitingOn = (STATUS_PLAIN[c.header.status]||{}).who || "none";
+  M.statusPlain = (STATUS_PLAIN[c.header.status]||{}).text || c.header.status || "";
+  // ownership timeline
+  const st = c.log.filter(e=>e.action==="status").map(e=>({t:new Date(e.at), s:e.new, old:e.old}));
+  const segs = [];
+  if (st.length){
+    let start = opened && opened < st[0].t ? opened : st[0].t, state = st[0].old || "Not Sent to SAP";
+    for (const e of st){ if (e.t > start) segs.push({from:start, to:e.t, s:state}); start = e.t; state = e.s; }
+    const end = closed ? start : (c.printedAt ? new Date(Math.max(new Date(c.printedAt), start)) : asOf);
+    const liveEnd = closed ? start : asOf;
+    segs.push({from:start, to:liveEnd > end ? liveEnd : end, s:state});
+  }
+  M.segs = segs.map(x=>({...x, who:(STATUS_PLAIN[x.s]||{}).who || "none"}));
+  M.own = {sap:0, proj:0, none:0}; M.segs.forEach(x=>M.own[x.who]+= (x.to-x.from));
+  M.span = M.segs.length ? M.segs[M.segs.length-1].to - M.segs[0].from : 0;
+  M.flips = st.length;
+  M.lastToCustomer = [...st].reverse().find(e=>e.s===c.header.status)?.t || null;
+  M.longestWait = {proj:null, sap:null};
+  M.segs.forEach(x=>{ const len = x.to-x.from; if (x.who!=="none" && (!M.longestWait[x.who] || len > M.longestWait[x.who].len)) M.longestWait[x.who] = {len, from:x.from, to:x.to}; });
+  // components
+  const comps = c.log.filter(e=>e.action==="component");
+  const chain = [];
+  comps.forEach(e=>{ if (!chain.length && e.old) chain.push({code:e.old, at:null}); if (!chain.length || chain[chain.length-1].code !== e.new) chain.push({code:e.new, at:new Date(e.at), by:e.party}); });
+  if (!chain.length && c.header.componentCode) chain.push({code:c.header.componentCode, at:null});
+  M.chain = chain; M.teams = new Set(chain.map(x=>x.code)).size; M.handoffs = Math.max(0, chain.length-1);
+  M.priorities = c.log.filter(e=>e.action==="priority");
+  // messages
+  M.count = {sap:msgs.filter(m=>m.party==="sap").length, proj:msgs.filter(m=>m.party==="proj").length, system:msgs.filter(m=>m.party==="system").length};
+  const human = msgs.filter(m=>m.party!=="system");
+  let gap = null;
+  for (let i=1;i<human.length;i++){ const g = human[i].d - human[i-1].d; if (!gap || g > gap.len) gap = {len:g, from:human[i-1], to:human[i]}; }
+  if (human.length && !closed){ const g = asOf - human[human.length-1].d; if (!gap || g > gap.len) gap = {len:g, from:human[human.length-1], to:null}; }
+  M.silence = gap;
+  const resp = [];
+  msgs.forEach((m,i)=>{ if (m.party!=="proj") return; const n = msgs.slice(i+1).find(x=>x.party==="sap"); if (n) resp.push(n.d - m.d); });
+  M.sapResponse = resp.length ? {avg:resp.reduce((a,b)=>a+b,0)/resp.length, max:Math.max(...resp)} : null;
+  M.lastSap = [...msgs].reverse().find(m=>m.party==="sap") || null;
+  M.lastProj = [...msgs].reverse().find(m=>m.party==="proj") || null;
+  M.people = [...new Set(msgs.filter(m=>m.party==="sap" && m.signer).map(m=>m.signer))];
+  // notes and mentions
+  const noteMap = {};
+  c.notes.forEach(n=>noteMap[n.num] = {num:n.num, title:n.title, mentions:[]});
+  msgs.forEach(m=>{
+    const found = new Set();
+    for (const x of m.text.matchAll(/\b0*(\d{6,7})\s*-\s*([^\n]{4,110})/g)) found.add(x[1]+"|"+x[2].trim());
+    for (const x of m.text.matchAll(/SAP Notes?\s*0*(\d{3,7})/gi)) found.add(x[1]+"|");
+    found.forEach(f=>{ const [num, title] = f.split("|"); const n = noteMap[num] ||= {num, title:"", mentions:[]}; if (!n.title && title) n.title = title; n.mentions.push({at:m.d, party:m.party, who:m.signer||m.author}); });
+  });
+  M.notes = Object.values(noteMap).filter(n=>n.num !== "560499");
+  // signals
+  const flags = [];
+  if (M.left !== null && !closed && M.waitingOn==="proj") flags.push({lvl: days(M.left) < 3 ? "high" : "warn", title: M.left > 0 ? `Auto-close in ${Math.floor(days(M.left))} days ${Math.floor((M.left%DAY)/3600000)} hours` : "Auto-close date has passed", text:`SAP is waiting for the project. If nobody replies before ${sapDay(c.header.autoConfirm)}, SAP closes the case as solved.`});
+  if (M.handoffs >= 3) flags.push({lvl:"warn", title:`Passed between ${M.teams} SAP teams (${M.handoffs} hand-offs)`, text:"Each hand-off restarts the investigation with a new person. Long chains usually mean nobody owns the root cause."});
+  M.notes.forEach(n=>{
+    const sapM = n.mentions.filter(x=>x.party==="sap").sort((a,b)=>a.at-b.at);
+    if (sapM.length >= 2 && (sapM[sapM.length-1].at - sapM[0].at) > 3*DAY){
+      const implementedSaid = msgs.some(m=>m.party==="proj" && m.d > sapM[0].at && m.d < sapM[sapM.length-1].at && /implement|applied|tested/i.test(m.text));
+      flags.push({lvl: implementedSaid ? "high" : "warn", title:`SAP recommended Note ${n.num} again`, text:`First on ${fmtD(sapM[0].at)}, again on ${fmtD(sapM[sapM.length-1].at)}${implementedSaid ? ", after the project had reported implementing it" : ""}.`});
+    }
+  });
+  if (gap && gap.len > 7*DAY) flags.push({lvl:"warn", title:`${Math.floor(days(gap.len))} days without a human reply`, text:`From ${fmtD(gap.from.d)} (${gap.from.party==="sap"?"SAP":"project"} wrote last) ${gap.to ? "to "+fmtD(gap.to.d) : "until today"}.`});
+  const pushback = msgs.filter(m=>m.party==="proj" && /not sure if you read|same issue|already (?:implemented|tried|done|suggested)|alternate solution|still (?:facing|not)|no progress|escalat|again and again/i.test(m.text));
+  if (pushback.length) flags.push({lvl:"high", title:"The project has pushed back on SAP's answers", text:`${plural(pushback.length,"project message")} challenge SAP's advice, most recently on ${fmtD(pushback[pushback.length-1].d)}.`});
+  if (c.header.priority === "Very High" || c.header.priority === "High"){ const bi = msgs.find(m=>m.type==="Business Impact"); if (bi && M.daysOpen > 14) flags.push({lvl:"warn", title:`${c.header.priority} priority, open ${M.daysOpen} days`, text:"The business impact statement describes urgency that the elapsed time doesn't match."}); }
+  M.flags = flags;
+  M.businessImpact = msgs.find(m=>m.type==="Business Impact")?.text || "";
+  M.problem = msgs.find(m=>m.type==="Problem Description")?.text || "";
+  M.asks = M.lastSap ? M.lastSap.text.split(/\n+/).map(s=>s.trim()).filter(s=>s.length > 12 && (/^(please|kindly|could|can|share|verify|check|provide|implement|attach|confirm|send|let us know|re-?run)\b/i.test(s) || /\b(please|kindly)\b/i.test(s))).slice(0,8) : [];
+  M.terms = GLOSSARY.filter(([,re])=>re.test(c.title+"\n"+c.messages.map(m=>m.text).join("\n")));
+  return M;
+}
+
+/* =====================================================================
+   State and storage
+   ===================================================================== */
+const S = {cases:{}, order:[], selected:null, tab:"overview", db:null, sample:null, user:null, me:null, local:false, standalone:false, busy:{}, filter:"all", names:{}, msg:"", pendingRender:false};
+function localDb(){
+  const KEY = "incident-lens-v1"; let data = {};
+  try { data = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
+  data.incidents ||= {};
+  const subs = [];
+  const save = ()=>{ try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} };
+  const snap = ()=>({docs:Object.entries(data.incidents).map(([id,v])=>({id, data:()=>v}))});
+  const emit = ()=>subs.forEach(f=>f(snap()));
+  return { local:true,
+    doc: p => { const id = p.split("/")[1]; return { get: async ()=>({exists: !!data.incidents[id], data:()=>data.incidents[id]}), set: async v=>{ data.incidents[id]=v; save(); emit(); }, update: async v=>{ data.incidents[id] = {...(data.incidents[id]||{}), ...v}; save(); emit(); }, delete: async ()=>{ delete data.incidents[id]; save(); emit(); } }; },
+    collection: () => ({ onSnapshot(f){ subs.push(f); f(snap()); return ()=>{}; } }) };
+}
+async function saveCase(c){
+  if (!S.db || c.example) return;
+  const body = JSON.parse(JSON.stringify(c)); delete body.example;
+  try { await S.db.doc("incidents/"+c.id).set(body); }
+  catch(e){ S.msg = e?.code==="invalid_argument" ? "You can view the team's incidents but not add to them." : e?.code==="quota_exceeded" ? "The incident list is full. Remove old incidents first." : "Couldn't save the incident for the team."; render(); }
+}
+
+/* =====================================================================
+   Intake
+   ===================================================================== */
+async function handleFiles(files){
+  const list = [...files].filter(f=>/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
+  if (!list.length){ S.msg = "Choose PDF files printed from SAP for Me."; return render(); }
+  const results = [];
+  for (const f of list){
+    S.msg = `Reading ${f.name}…`; renderIntakeMsg();
+    try {
+      const lines = await pdfToLines(await f.arrayBuffer());
+      const c = parseIncident(lines);
+      c.fileName = f.name; c.uploadedAt = new Date().toISOString(); c.uploadedBy = S.me || null;
+      const prev = S.cases[c.id];
+      c.wasKnown = !!(prev && !prev.example) || results.some(r=>r.id===c.id);
+      if (prev && !prev.example){
+        const seen = new Set(prev.messages.map(m=>m.at+"|"+m.author));
+        c.messages.forEach(m=>{ if (!seen.has(m.at+"|"+m.author)) m.isNew = true; });
+        c.newCount = c.messages.filter(m=>m.isNew).length;
+        c.analysis = prev.analysis || null; c.analysisFor = prev.analysisFor || null; c.analysisSource = prev.analysisSource || null; c.analysisAt = prev.analysisAt || null;
+        c.done = prev.done || {};
+      } else { c.newCount = 0; c.done = {}; }
+      S.cases[c.id] = c;
+      results.push(c);
+      await saveCase(c);
+    } catch(e){ results.push({error:`${f.name}: ${e.message || "couldn't be read"}`}); }
+  }
+  const okAll = results.filter(r=>!r.error), bad = results.filter(r=>r.error);
+  const ok = [...new Map(okAll.map(r=>[r.id,r])).values()];
+  const added = ok.filter(r=>!r.wasKnown).length, updated = ok.length - added;
+  const newMsgs = ok.reduce((n,r)=>n+(r.newCount||0),0);
+  S.msg = [added ? `Added ${plural(added,"incident")}.` : "", updated ? `Updated ${plural(updated,"incident")}${newMsgs?` with ${plural(newMsgs,"new message")}`:" (no new messages)"}.` : "", ...bad.map(x=>x.error)].filter(Boolean).join(" ");
+  ok.forEach(r=>delete r.wasKnown);
+  if (ok.length === 1){ S.selected = ok[0].id; S.tab = "overview"; }
+  render();
+  if (S.sample && document.getElementById("autoAi")?.checked !== false) for (const c of ok){ if (!c.analysis || c.analysisFor !== c.messages.length) await runAi(c.id); }
+}
+
+/* =====================================================================
+   AI
+   ===================================================================== */
+const AI_SHAPE = `{
+ "headline": "one sentence a non-technical manager understands",
+ "plainSummary": "4-6 sentences in plain language, no jargon without a short explanation",
+ "analogy": "one everyday analogy for the technical problem, or empty",
+ "businessImpact": "1-2 sentences",
+ "currentState": "who is waiting for whom, since when, and for what",
+ "rootCause": {"status": "known" | "suspected" | "unknown", "text": "1-3 sentences"},
+ "sapRecommendations": [{"what": "...", "plain": "same in plain words", "by": "SAP person or team", "date": "DD.MM.YYYY", "status": "implemented" | "already done" | "not done" | "pending" | "superseded" | "rejected" | "unclear", "result": "what happened"}],
+ "projectActions": [{"date": "DD.MM.YYYY", "what": "...", "result": "..."}],
+ "contention": [{"topic": "...", "sapPosition": "...", "projectPosition": "...", "whyItMatters": "...", "severity": "high" | "medium" | "low"}],
+ "actionItems": [{"owner": "Project team" | "SAP" | "Both", "action": "...", "plain": "...", "due": "DD.MM.YYYY or empty", "priority": "now" | "soon" | "later", "source": "which message asked for it"}],
+ "risks": ["..."],
+ "nextBestStep": "one or two sentences",
+ "draftReply": "a polite, specific reply the project can post to SAP now",
+ "glossary": [{"term": "...", "meaning": "plain explanation"}]
+}`;
+function aiPrompt(c){
+  const M = measure(c);
+  const msgs = c.messages.map(m=>`[${m.atText}] ${m.party==="sap"?"SAP":m.party==="system"?"SAP system notice":"PROJECT"} (${m.type}${m.signer?", "+m.signer:m.party==="proj"?", "+m.author:""}):\n${m.text}`).join("\n\n");
+  const log = c.log.filter(e=>e.action!=="memo").map(e=>`${e.at.slice(0,16)} ${e.party==="proj"?"PROJECT":"SAP"} ${e.action}: ${e.old||""} -> ${e.new||""}`).join("\n");
+  return `You explain SAP support incidents to project leaders and business people who are not SAP technical experts. Read the incident below and reply with ONLY a JSON object in exactly this shape:
+${AI_SHAPE}
+
+Rules:
+- Base every statement on the incident text. Do not invent facts, SAP Note numbers, dates or people.
+- "PROJECT" means the customer's project team. Separate what SAP recommended from what the project actually did, and say whether each recommendation was implemented and whether it helped.
+- Contention = points where SAP and the project disagree, talk past each other, or where SAP's advice ignores earlier history.
+- Action items must be concrete and say who owns them. Put anything needed before the auto-close date first.
+- Today is ${new Date().toISOString().slice(0,10)}. Auto-close (estimated automatic confirmation) date: ${c.header.autoConfirm||"unknown"}.
+
+INCIDENT ${c.number}/${c.year}: ${c.title}
+Status: ${c.header.status} (${M.statusPlain}); Priority: ${c.header.priority}; System: ${c.header.system}; Product: ${c.header.installation}; Current component: ${c.header.component}
+Measured facts: open ${M.daysOpen} days; time with SAP ${dur(M.own.sap)}, with project ${dur(M.own.proj)}; component chain ${M.chain.map(x=>x.code).join(" -> ")}; status changes ${M.flips}.
+SAP Notes attached: ${c.notes.map(n=>n.num+" "+n.title).join("; ")||"none"}
+Attachments: ${c.attachments.map(a=>a.name+" ("+(a.by||"?")+", "+a.date+")").join("; ")||"none"}
+
+ACTION LOG (status, component, priority changes):
+${log}
+
+CONVERSATION (oldest first):
+${msgs}`.slice(0, 200000);
+}
+function validAnalysis(a){ return a && typeof a==="object" && (a.headline || a.plainSummary); }
+async function runAi(id){
+  const c = S.cases[id]; if (!c || !S.sample) return;
+  S.busy[id] = "Reading the case and writing the explanation… this usually takes 30 to 90 seconds."; render();
+  try {
+    const a = await S.sample.json(aiPrompt(c), {modelTier:"default"});
+    if (!validAnalysis(a)) throw {code:"invalid_json"};
+    c.analysis = a; c.analysisFor = c.messages.length; c.analysisSource = "ai"; c.analysisAt = new Date().toISOString();
+    delete S.busy[id]; render(); await saveCase(c);
+  } catch(e){
+    S.busy[id] = null; delete S.busy[id];
+    c.aiError = ({not_granted:"AI use wasn't allowed for this page. You can allow it from the page's permissions.", rate_limited:"Too many AI requests right now. Try again in a minute.", invalid_json:"AI answered in an unexpected format. Try again.", prompt_too_large:"This incident is too long for one AI request.", session_expired:"Sign in again to use AI."}[e?.code]) || "The AI explanation didn't complete. Try again.";
+    if (["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e?.code)) S.sample = null;
+    render();
+  }
+}
+function applyPasted(id, txt){
+  const c = S.cases[id];
+  const m = txt.match(/```(?:json)?\s*([\s\S]*?)```/); let src = m ? m[1] : txt;
+  const i = src.indexOf("{"); src = i>=0 ? src.slice(i, src.lastIndexOf("}")+1) : "";
+  let a = null; try { a = JSON.parse(src); } catch {}
+  if (!validAnalysis(a)){ c.aiError = "That doesn't look like the JSON answer. Paste the whole reply, including the braces."; return render(); }
+  c.analysis = a; c.analysisFor = c.messages.length; c.analysisSource = "pasted"; c.analysisAt = new Date().toISOString(); c.aiError = ""; render(); saveCase(c);
+}
+
+/* =====================================================================
+   Render
+   ===================================================================== */
+function render(){
+  renderIntakeMsg(); renderPortfolio();
+  const a = document.activeElement;
+  if (a && a.tagName==="TEXTAREA" && a.closest("#casePanel")){ S.pendingRender = true; return; }
+  renderCase();
+}
+document.addEventListener("focusout", ()=>setTimeout(()=>{ const a = document.activeElement; if (S.pendingRender && !(a && a.tagName==="TEXTAREA")){ S.pendingRender=false; renderCase(); } },0));
+function renderIntakeMsg(){
+  const el = document.getElementById("intakeMsg");
+  el.innerHTML = (S.msg ? `<div class="notice">${esc(S.msg)}</div>` : "") +
+    (S.local ? `<p class="hint">Incidents are kept in this browser only.</p>` : "") +
+    (S.sample ? `<label class="row hint"><input type="checkbox" id="autoAi" ${S.autoAi===false?"":"checked"}> Explain new incidents with AI automatically (uses your Claude account)</label>` : "");
+  const cb = document.getElementById("autoAi"); if (cb) cb.onchange = ()=>{ S.autoAi = cb.checked; };
+  document.getElementById("introBtns").innerHTML = S.cases[EXAMPLE_ID] ? "" : `<button type="button" id="btnEx">Show the example</button>`;
+  const bx = document.getElementById("btnEx"); if (bx) bx.onclick = ()=>{ S.userPickedExample = true; loadExample(); S.selected = EXAMPLE_ID; S.tab = "overview"; render(); };
+}
+function clockInfo(c, M){
+  if (M.closed) return {cls:"none", text:"Closed"};
+  if (!M.auto) return {cls:"none", text:"No auto-close date"};
+  if (M.waitingOn !== "proj") return {cls:"none", text:`Clock paused · SAP's turn`};
+  const d = days(M.left);
+  if (d <= 0) return {cls:"err", text:"Auto-close date passed"};
+  return {cls: d < 3 ? "err" : d < 7 ? "warn" : "", text:`${Math.floor(d)}d ${Math.floor((M.left%DAY)/3600000)}h to auto-close`};
+}
+function sortedIds(){
+  return Object.keys(S.cases).sort((a,b)=>{
+    const A = measure(S.cases[a]), B = measure(S.cases[b]);
+    const ka = A.closed ? 1e15 : (A.waitingOn==="proj" && A.left!==null ? A.left : 1e14), kb = B.closed ? 1e15 : (B.waitingOn==="proj" && B.left!==null ? B.left : 1e14);
+    return ka - kb;
+  });
+}
+function renderPortfolio(){
+  const el = document.getElementById("portfolio");
+  const ids = sortedIds();
+  if (!ids.length){ el.innerHTML = `<h2 id="h-pf">Incidents</h2><div class="empty">No incidents yet. Drop an SAP incident PDF above.</div>`; return; }
+  const waitingUs = ids.filter(id=>{ const M = measure(S.cases[id]); return !M.closed && M.waitingOn==="proj"; }).length;
+  el.innerHTML = `<div class="row between"><h2 id="h-pf">Incidents <span class="hint" style="font-family:var(--f-body)">${plural(ids.length,"case")} · ${waitingUs} waiting on the project</span></h2>
+    ${S.sample && ids.some(id=>!S.cases[id].analysis) ? `<button type="button" class="ai" id="btnAiAll">Explain all with AI</button>` : ""}</div>
+    <div class="cards">${ids.map(id=>{
+      const c = S.cases[id], M = measure(c), ck = clockInfo(c, M), a = c.analysis;
+      const tot = M.own.sap + M.own.proj || 1;
+      const high = (a?.contention||[]).filter(x=>x.severity==="high").length;
+      return `<button type="button" class="card ${S.selected===id?"sel":""}" data-open="${esc(id)}" aria-label="Open incident ${esc(c.number)}">
+        <div class="top"><span class="eyebrow">${esc(c.number)}/${esc(c.year)}${c.example?" · example":""}</span><span class="clockchip ${ck.cls}">${esc(ck.text)}</span></div>
+        <h3>${esc(a?.headline || c.title)}</h3>
+        <div class="row"><span class="pill ${M.waitingOn==="proj"?"proj":M.waitingOn==="sap"?"sap":""}">${M.closed?"Closed":M.waitingOn==="proj"?"Waiting on project":"Waiting on SAP"}</span>
+          <span class="pill ${c.header.priority==="Very High"?"err":c.header.priority==="High"?"warn":""}">${esc(c.header.priority||"")}</span>
+          ${high?`<span class="pill err">${plural(high,"disagreement")}</span>`:""}
+          ${c.newCount?`<span class="pill ai">${c.newCount} new</span>`:""}
+          ${S.busy[id]?`<span class="pill ai">AI working…</span>`:a?`<span class="pill ai">Explained</span>`:""}</div>
+        <div class="minibar" role="img" aria-label="Time with SAP versus project"><i style="width:${M.own.sap/tot*100}%;background:var(--sap)"></i><i style="width:${M.own.proj/tot*100}%;background:var(--proj)"></i></div>
+        <div class="kv"><span>Open</span><span>${M.daysOpen ?? "–"} days</span><span>SAP teams</span><span>${M.teams} (${plural(M.handoffs,"hand-off")})</span><span>Last update</span><span>${fmtD(new Date(c.messages[c.messages.length-1]?.at))}</span></div>
+      </button>`; }).join("")}</div>`;
+  el.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ S.selected = b.dataset.open; S.tab="overview"; render(); document.getElementById("casePanel").scrollIntoView({behavior:"smooth", block:"start"}); });
+  const all = document.getElementById("btnAiAll");
+  if (all) all.onclick = async ()=>{ all.disabled = true; for (const id of ids){ if (!S.cases[id].analysis) await runAi(id); } };
+}
+
+const TABS = [["overview","In plain words"],["clock","Clock and ownership"],["recs","Recommended vs done"],["contention","Disagreements"],["next","What to do next"],["talk","Conversation"],["terms","Glossary"]];
+function renderCase(){
+  const el = document.getElementById("casePanel");
+  const c = S.cases[S.selected];
+  if (!c){ el.hidden = true; return; }
+  el.hidden = false;
+  const M = measure(c), a = c.analysis, ck = clockInfo(c, M);
+  const stale = a && c.analysisFor && c.analysisFor !== c.messages.length;
+  const counts = {recs:(a?.sapRecommendations||[]).length || M.notes.length, contention:(a?.contention||[]).length || M.flags.filter(f=>f.lvl==="high").length, next:(a?.actionItems||[]).length || M.asks.length, talk:c.messages.length, terms:(a?.glossary||[]).length || M.terms.length};
+  el.innerHTML = `<div class="casehead">
+      <div class="row between"><span class="eyebrow">Incident ${esc(c.number)}/${esc(c.year)} · ${esc(c.header.customer||"")}${c.example?" · example":""}</span>
+        <div class="row">${aiControls(c)}<button type="button" data-close="1">Back to all incidents</button></div></div>
+      <h2 id="h-case">${esc(c.title)}</h2>
+      ${a?.headline ? `<p class="big">${esc(a.headline)}</p>` : ""}
+      ${S.busy[c.id] ? `<div class="notice">${esc(S.busy[c.id])}</div>` : ""}
+      ${c.aiError ? `<div class="notice warn">${esc(c.aiError)}</div>` : ""}
+      ${stale ? `<div class="notice warn">The AI explanation was written for an older version of this incident (${plural(c.analysisFor,"message")}; now ${c.messages.length}). Run it again to include the new messages.</div>` : ""}
+      ${c.pasteOpen ? pastePanel(c) : ""}
+      <div class="facts">
+        <div class="fact"><span>Status</span><b>${esc(c.header.status||"–")}</b><small>${esc(M.statusPlain)}</small></div>
+        <div class="fact"><span>Auto-close</span><b>${esc(c.header.autoConfirm||"–")}</b><small>${esc(ck.text)}</small></div>
+        <div class="fact"><span>Priority</span><b>${esc(c.header.priority||"–")}</b><small>${esc(PRIORITY_PLAIN[c.header.priority]||"")}</small></div>
+        <div class="fact"><span>System</span><b>${esc(c.header.system||"–")}</b><small>${esc(c.header.installation||"")}</small></div>
+        <div class="fact"><span>Now with</span><b>${esc(c.header.componentCode||c.header.component||"–")}</b><small>${esc(compPlain(c.header.componentCode))}</small></div>
+        <div class="fact"><span>Open since</span><b>${fmtD(M.opened)}</b><small>${M.daysOpen} days · ${plural(c.messages.length,"message")}</small></div>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">${TABS.map(([k,l])=>`<button type="button" role="tab" aria-selected="${S.tab===k}" data-tab="${k}">${l}${counts[k]?`<span class="cnt">${counts[k]}</span>`:""}</button>`).join("")}</div>
+    <div id="tabBody">${({overview:tabOverview, clock:tabClock, recs:tabRecs, contention:tabContention, next:tabNext, talk:tabTalk, terms:tabTerms})[S.tab](c, M, a)}</div>`;
+  el.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.tab; renderCase(); });
+  el.querySelector("[data-close]").onclick = ()=>{ S.selected = null; render(); document.getElementById("portfolio").scrollIntoView({behavior:"smooth"}); };
+  wireCase(c);
+  tick();
+}
+function aiControls(c){
+  if (S.busy[c.id]) return `<button type="button" class="ai" disabled>AI working…</button>`;
+  if (S.sample) return `<button type="button" class="ai" data-ai="run">${c.analysis?"Re-run AI explanation":"Explain with AI"}</button>`;
+  return `<button type="button" class="ai" data-ai="copy">Copy AI prompt</button><button type="button" class="ai" data-ai="paste">Paste AI answer</button><span class="toast" id="copied" hidden>Copied</span>`;
+}
+function pastePanel(c){
+  return `<div class="notice" style="display:grid;gap:8px"><label for="pasteAns">Paste the whole reply from Claude (or Joule) here. It should contain one JSON object.</label>
+    <textarea id="pasteAns"></textarea><div class="row"><button type="button" class="primary" data-ai="apply">Use this answer</button><button type="button" data-ai="cancel">Cancel</button></div></div>`;
+}
+function srcNote(a, c){
+  if (!a) return "";
+  const src = c.analysisSource==="prepared" ? "Prepared AI analysis for the example" : c.analysisSource==="pasted" ? "AI answer pasted by a user" : "AI analysis";
+  return `<p class="srcnote"><span class="pill ai">AI</span>${src}${c.analysisAt?` · ${fmtD(new Date(c.analysisAt))}`:""}. Check important points against the conversation.</p>`;
+}
+function needAi(c, what){
+  return `<div class="empty">${what} ${S.sample ? `<button type="button" class="link" data-ai="run">Explain with AI</button> to fill this in.` : `Use "Copy AI prompt" above, paste it into Claude or Joule, then "Paste AI answer".`}</div>`;
+}
+
+/* ---------- Tab: overview ---------- */
+function tabOverview(c, M, a){
+  const fallback = `${c.header.customer?.replace(/^\d+\s*-\s*/,"") || "The customer"} reported: “${c.title}”. ${M.statusPlain ? `Right now: ${M.statusPlain.toLowerCase()}.` : ""} The case has been open ${M.daysOpen} days and has moved through ${plural(M.teams,"SAP team")}.`;
+  return `<div class="grid2" style="margin-top:16px">
+    <div class="block">
+      <h3>What is this about?</h3>
+      <p class="big">${esc(a?.plainSummary || fallback)}</p>
+      ${a?.analogy ? `<p class="quote">${esc(a.analogy)}</p>` : ""}
+      <h3 style="margin-top:8px">Why it matters</h3>
+      <p>${esc(a?.businessImpact || M.businessImpact.split("\n").slice(0,6).join(" ") || "No business impact statement in the case.")}</p>
+      <h3 style="margin-top:8px">Where it stands</h3>
+      <p>${esc(a?.currentState || `${M.statusPlain} since ${fmtDT(M.lastToCustomer)}.`)}</p>
+      ${a?.rootCause ? `<h3 style="margin-top:8px">Root cause</h3><p><span class="pill ${a.rootCause.status==="known"?"ok":a.rootCause.status==="suspected"?"warn":"err"}">${esc(a.rootCause.status)}</span> ${esc(a.rootCause.text)}</p>` : ""}
+      ${a?.nextBestStep ? `<div class="flag info"><span class="s"></span><div><b>Best next step</b><span>${esc(a.nextBestStep)}</span></div></div>` : ""}
+      ${srcNote(a, c)}
+    </div>
+    <div class="block">
+      <div class="stats">
+        <div class="stat"><b>${M.daysOpen}</b><span>days open</span></div>
+        <div class="stat"><b>${M.teams}</b><span>SAP teams involved</span></div>
+        <div class="stat"><b>${M.flips}</b><span>status changes</span></div>
+        <div class="stat"><b>${M.count.sap}/${M.count.proj}</b><span>messages SAP / project</span></div>
+      </div>
+      <h3>Signals worth attention</h3>
+      ${M.flags.length ? M.flags.map(f=>`<div class="flag ${f.lvl}"><span class="s"></span><div><b>${esc(f.title)}</b><span class="hint">${esc(f.text)}</span></div></div>`).join("") : `<p class="hint">Nothing unusual measured.</p>`}
+      ${(a?.risks||[]).length ? `<h3>Risks</h3><ul style="margin:0;padding-left:1.2em;display:grid;gap:4px">${a.risks.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+    </div></div>`;
+}
+/* ---------- Tab: clock and ownership ---------- */
+function tabClock(c, M){
+  const R = 62, C = 2*Math.PI*R;
+  let frac = 0, live = false;
+  if (M.auto && M.lastToCustomer && M.waitingOn==="proj" && !M.closed){ const total = M.auto - M.lastToCustomer; frac = Math.max(0, Math.min(1, (Date.now()-M.lastToCustomer)/total)); live = true; }
+  const color = !live ? "var(--sys)" : days(M.left) < 3 ? "var(--err)" : days(M.left) < 7 ? "var(--warn)" : "var(--ok)";
+  const tot = M.own.sap + M.own.proj + M.own.none || 1;
+  const start = M.segs[0]?.from, end = M.segs[M.segs.length-1]?.to;
+  return `<div style="display:grid;gap:22px;margin-top:16px">
+    <div class="clock">
+      <svg class="ring" viewBox="0 0 150 150" role="img" aria-label="Share of the response window already used">
+        <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"></circle>
+        <circle cx="75" cy="75" r="${R}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-frac)}" transform="rotate(-90 75 75)"></circle>
+        <text x="75" y="72" text-anchor="middle" font-family="var(--f-display)" font-size="22" fill="var(--ink)" id="ringDays">${live ? Math.max(0,Math.floor(days(M.left))) : "–"}</text>
+        <text x="75" y="92" text-anchor="middle" font-size="11" fill="var(--muted)">${live ? "days left" : "paused"}</text>
+      </svg>
+      <div class="block">
+        <span class="eyebrow">Auto-close clock</span>
+        ${live ? `<div class="count" id="countdown" data-until="${M.auto.toISOString()}">–</div>
+          <p>SAP is waiting for the project. If nobody replies before <b>${sapDay(c.header.autoConfirm)}</b>, SAP marks the case as solved and closes it. The project has used ${Math.round(frac*100)}% of this window, which started ${fmtDT(M.lastToCustomer)}.</p>
+          <p class="hint">A reply from the project sends the case back to SAP and normally stops this clock. The date is SAP's estimate; the countdown assumes the start of that day, Central European Time.</p>`
+        : M.closed ? `<p>The case is closed.</p>` : `<p>The clock isn't running: it's SAP's turn${M.auto ? `. The last estimated auto-close date shown was ${sapDay(c.header.autoConfirm)}` : ""}.</p>`}
+      </div>
+    </div>
+    <div class="block">
+      <h3>Who had the ball</h3>
+      <p class="hint">Each colour shows whose turn it was, based on the status changes in SAP's action log. "Customer Action" counts as the project's turn, even when SAP set it while waiting for a meeting or an answer.</p>
+      <div class="own" role="img" aria-label="Ownership timeline">${M.segs.map(x=>`<i class="${x.who}" style="width:${(x.to-x.from)/tot*100}%" title="${esc(x.s)}: ${esc(fmtDT(x.from))} – ${esc(fmtDT(x.to))}"></i>`).join("")}</div>
+      <div class="axis"><span>${fmtD(start)}</span><span>${fmtD(end)}</span></div>
+      <div class="legend"><span><em style="background:var(--sap)"></em>SAP: ${dur(M.own.sap)} (${Math.round(M.own.sap/tot*100)}%)</span><span><em style="background:var(--proj)"></em>Project team: ${dur(M.own.proj)} (${Math.round(M.own.proj/tot*100)}%)</span>
+        ${M.longestWait.sap?`<span>Longest SAP turn: ${dur(M.longestWait.sap.len)}</span>`:""}${M.longestWait.proj?`<span>Longest project turn: ${dur(M.longestWait.proj.len)}</span>`:""}</div>
+      ${M.sapResponse ? `<p class="hint">After a project message, SAP answered on average in ${dur(M.sapResponse.avg)}; slowest ${dur(M.sapResponse.max)}.</p>` : ""}
+    </div>
+    <div class="block">
+      <h3>Which SAP teams handled it</h3>
+      <p class="hint">${M.handoffs ? `The case changed teams ${plural(M.handoffs,"time")}.` : "The case stayed with one team."}${M.people.length?` SAP people who wrote: ${M.people.map(esc).join(", ")}.`:""}</p>
+      <div class="hops">${M.chain.map((x,i)=>`${i?`<span class="arrow" aria-hidden="true">→</span>`:""}<div class="hop ${i===M.chain.length-1?"cur":""}"><b>${esc(x.code)}</b><span>${esc(compPlain(x.code))}</span><small>${x.at?fmtD(x.at):"at start"}${x.by==="proj"?" · set by project":""}</small></div>`).join("")}</div>
+      ${M.priorities.length ? `<p class="hint">Priority: ${M.priorities.map(p=>`${esc(p.old)} → ${esc(p.new)} (${fmtD(new Date(p.at))}, by ${p.party==="proj"?"project":"SAP"})`).join("; ")}.</p>` : ""}
+    </div></div>`;
+}
+/* ---------- Tab: recommended vs done ---------- */
+const REC_PILL = {"implemented":"ok","already done":"warn","not done":"err","pending":"warn","superseded":"","rejected":"err","unclear":""};
+function tabRecs(c, M, a){
+  const notes = M.notes.length ? `<h3 style="margin-top:6px">SAP Notes in this case</h3><div class="tablewrap"><table><thead><tr><th>Note</th><th>Title</th><th>Mentioned</th></tr></thead><tbody>
+    ${M.notes.map(n=>`<tr><td><a href="https://me.sap.com/notes/${esc(n.num)}" target="_blank" rel="noopener">${esc(n.num)}</a></td><td>${esc(n.title||"–")}</td><td>${n.mentions.length ? n.mentions.map(x=>`<span class="pill ${x.party}">${x.party==="sap"?"SAP":"Project"} ${esc(fmtD(x.at))}</span>`).join(" ") : `<span class="hint">attached only</span>`}</td></tr>`).join("")}
+    </tbody></table></div>` : "";
+  if (!a?.sapRecommendations) return `<div style="display:grid;gap:12px;margin-top:16px">${needAi(c,"The side-by-side of SAP's recommendations and the project's actions comes from the AI explanation.")}${notes}</div>`;
+  return `<div style="display:grid;gap:14px;margin-top:16px">
+    <div class="grid2">
+      <div class="block"><h3><span class="pill sap">SAP</span> What SAP recommended</h3>
+        ${a.sapRecommendations.map(r=>`<div class="ccard"><div class="row between"><b>${esc(r.plain||r.what)}</b><span class="pill ${REC_PILL[r.status]??""}">${esc(r.status)}</span></div>
+          ${r.plain && r.what && r.plain!==r.what ? `<span class="hint">${esc(r.what)}</span>`:""}
+          <span class="hint">${esc(r.by||"SAP")} · ${esc(r.date||"")}</span>${r.result?`<span>${esc(r.result)}</span>`:""}</div>`).join("")}</div>
+      <div class="block"><h3><span class="pill proj">Project</span> What the project team did</h3>
+        ${(a.projectActions||[]).map(p=>`<div class="ccard"><div class="row between"><b>${esc(p.what)}</b><span class="hint mono">${esc(p.date||"")}</span></div>${p.result?`<span>${esc(p.result)}</span>`:""}</div>`).join("") || `<p class="hint">No actions listed.</p>`}</div>
+    </div>${notes}${srcNote(a, c)}</div>`;
+}
+/* ---------- Tab: contention ---------- */
+function tabContention(c, M, a){
+  const det = M.flags.filter(f=>f.lvl==="high" || /again|pushed back/i.test(f.title));
+  const detHtml = det.length ? `<h3>Measured signals</h3>${det.map(f=>`<div class="flag ${f.lvl}"><span class="s"></span><div><b>${esc(f.title)}</b><span class="hint">${esc(f.text)}</span></div></div>`).join("")}` : "";
+  if (!a?.contention) return `<div style="display:grid;gap:12px;margin-top:16px">${needAi(c,"The two sides' positions come from the AI explanation.")}${detHtml}</div>`;
+  const order = {high:0, medium:1, low:2};
+  return `<div style="display:grid;gap:14px;margin-top:16px">
+    ${[...a.contention].sort((x,y)=>(order[x.severity]??3)-(order[y.severity]??3)).map(x=>`<div class="ccard">
+      <div class="row between"><h3>${esc(x.topic)}</h3><span class="pill ${x.severity==="high"?"err":x.severity==="medium"?"warn":""}">${esc(x.severity)}</span></div>
+      <div class="vs"><div class="side sap"><b>SAP SAYS</b><span>${esc(x.sapPosition)}</span></div><div class="side proj"><b>PROJECT SAYS</b><span>${esc(x.projectPosition)}</span></div></div>
+      ${x.whyItMatters?`<p class="hint"><b>Why it matters:</b> ${esc(x.whyItMatters)}</p>`:""}</div>`).join("")}
+    ${detHtml}${srcNote(a, c)}</div>`;
+}
+/* ---------- Tab: next steps ---------- */
+function tabNext(c, M, a){
+  const items = a?.actionItems || [];
+  const asks = M.asks.length ? `<h3>What SAP asked for in its last message (${fmtD(M.lastSap?.d || (M.lastSap && new Date(M.lastSap.at)))})</h3><ul style="margin:0;padding-left:1.2em;display:grid;gap:4px">${M.asks.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>` : "";
+  const pr = {now:0, soon:1, later:2};
+  return `<div style="display:grid;gap:14px;margin-top:16px">
+    ${items.length ? `<div class="block"><h3>Action items</h3><p class="hint">Tick items as they're done. ${c.example ? "Ticks on the example aren't saved." : S.local ? "Ticks are saved in this browser." : "Ticks are saved for everyone who opens this page."}</p>
+      ${[...items].map((x,i)=>({x,i})).sort((p,q)=>(pr[p.x.priority]??3)-(pr[q.x.priority]??3)).map(({x,i})=>{ const done = !!(c.done||{})[i]; return `<label class="act ${done?"done":""}"><input type="checkbox" data-done="${i}" ${done?"checked":""}>
+        <div><span class="row"><span class="pill ${/project/i.test(x.owner)?"proj":/sap/i.test(x.owner)?"sap":""}">${esc(x.owner)}</span><span class="pill ${x.priority==="now"?"err":x.priority==="soon"?"warn":""}">${esc(x.priority)}</span>${x.due?`<span class="pill">due ${esc(x.due)}</span>`:""}</span>
+        <b class="what">${esc(x.plain||x.action)}</b>${x.plain && x.action && x.plain!==x.action ? `<span class="hint">${esc(x.action)}</span>`:""}${x.source?`<span class="hint">From: ${esc(x.source)}</span>`:""}</div></label>`; }).join("")}</div>` : needAi(c, "Owned, prioritised action items come from the AI explanation.")}
+    ${asks}
+    ${a?.draftReply ? `<div class="block"><div class="row between"><h3>Draft reply to SAP</h3><div class="row"><span class="toast" id="replyCopied" hidden>Copied</span><button type="button" id="copyReply">Copy reply</button></div></div>
+      <textarea id="reply" style="min-height:240px" aria-label="Draft reply">${esc(a.draftReply)}</textarea><p class="hint">Edit before posting. Attach the evidence it mentions.</p></div>` : ""}
+    ${srcNote(a, c)}</div>`;
+}
+/* ---------- Tab: conversation ---------- */
+function tabTalk(c, M){
+  const f = S.filter;
+  const list = c.messages.filter(m=>f==="all" || m.party===f);
+  return `<div style="display:grid;gap:14px;margin-top:16px">
+    <div class="chips" role="group" aria-label="Filter messages">${[["all","All"],["sap","SAP"],["proj","Project team"],["system","SAP system notices"]].map(([k,l])=>`<button type="button" aria-pressed="${f===k}" data-f="${k}">${l} · ${k==="all"?c.messages.length:c.messages.filter(m=>m.party===k).length}</button>`).join("")}</div>
+    <div class="msgs">${list.map(m=>{ const d = new Date(m.at); const first = m.text.replace(/^(?:Hello|Hi|Dear)[^\n]*\n+/i,"").replace(/\s+/g," ").slice(0,220);
+      return `<div class="msg ${m.party} ${m.isNew?"new":""}"><span class="bar"></span><details><summary>
+        <span class="meta"><b style="color:var(--ink)">${m.party==="sap"?"SAP"+(m.signer?" · "+esc(m.signer):""):m.party==="system"?"SAP system":esc(m.author)}</b><span>${esc(m.type)}</span><span class="mono">${esc(fmtDT(d))}</span></span>
+        <span class="peek">${esc(first)}${m.text.length>220?"…":""}</span></summary><pre>${esc(m.text)}</pre></details></div>`; }).join("")}</div>
+    ${c.attachments.length ? `<h3>Attachments</h3><ul style="margin:0;padding-left:1.2em">${c.attachments.map(x=>`<li>${esc(x.name)} <span class="hint">${esc(x.by)} ${esc(x.date)}</span></li>`).join("")}</ul>` : ""}</div>`;
+}
+/* ---------- Tab: glossary ---------- */
+function tabTerms(c, M, a){
+  const seen = new Set(); const items = [];
+  (a?.glossary||[]).forEach(g=>{ const k = String(g.term).toLowerCase(); if (!seen.has(k)){ seen.add(k); items.push([g.term, g.meaning]); } });
+  M.terms.forEach(([t,,m])=>{ const k = t.toLowerCase(); if (![...seen].some(s=>s.includes(k.split(" ")[0].toLowerCase()))){ seen.add(k); items.push([t,m]); } });
+  return `<div style="display:grid;gap:12px;margin-top:16px"><p class="hint">Terms that appear in this case, explained.</p><div class="gl">${items.map(([t,m])=>`<div><b>${esc(t)}</b><span>${esc(m)}</span></div>`).join("")}</div></div>`;
+}
+
+function wireCase(c){
+  const el = document.getElementById("casePanel");
+  el.querySelectorAll("[data-ai]").forEach(b=>b.onclick = async ()=>{
+    const act = b.dataset.ai;
+    if (act==="run"){ c.aiError = ""; return runAi(c.id); }
+    if (act==="copy"){ try { await navigator.clipboard.writeText(aiPrompt(c)); const t=document.getElementById("copied"); t.hidden=false; setTimeout(()=>t.hidden=true,1500); } catch { c.pasteOpen = true; renderCase(); const ta=document.getElementById("pasteAns"); ta.value = aiPrompt(c); ta.select(); } return; }
+    if (act==="paste"){ c.pasteOpen = true; return renderCase(); }
+    if (act==="cancel"){ c.pasteOpen = false; return renderCase(); }
+    if (act==="apply"){ const v = document.getElementById("pasteAns").value; c.pasteOpen = false; return applyPasted(c.id, v); }
+  });
+  el.querySelectorAll("[data-done]").forEach(cb=>cb.onchange = ()=>{ c.done = {...(c.done||{}), [cb.dataset.done]: cb.checked}; renderCase(); if (!c.example && S.db) S.db.doc("incidents/"+c.id).update({done:c.done}).catch(()=>{}); });
+  el.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ S.filter = b.dataset.f; renderCase(); });
+  const cr = document.getElementById("copyReply");
+  if (cr) cr.onclick = async ()=>{ const ta = document.getElementById("reply"); try { await navigator.clipboard.writeText(ta.value); const t=document.getElementById("replyCopied"); t.hidden=false; setTimeout(()=>t.hidden=true,1500); } catch { ta.focus(); ta.select(); } };
+}
+function tick(){
+  const el = document.getElementById("countdown"); if (!el) return;
+  const ms = new Date(el.dataset.until) - Date.now();
+  if (ms <= 0){ el.textContent = "Date reached"; return; }
+  const d = Math.floor(ms/DAY), h = Math.floor(ms%DAY/3600000), m = Math.floor(ms%3600000/60000), s = Math.floor(ms%60000/1000);
+  el.textContent = `${d}d ${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m ${String(s).padStart(2,"0")}s`;
+}
+setInterval(tick, 1000);
+
+/* =====================================================================
+   Start
+   ===================================================================== */
+const EXAMPLE_ID = (typeof EXAMPLE !== "undefined" && EXAMPLE) ? "example-"+EXAMPLE.case.id : "";
+function loadExample(){ if (!EXAMPLE_ID) return; const c = JSON.parse(JSON.stringify(EXAMPLE.case)); c.id = EXAMPLE_ID; c.example = true; c.done = {}; S.cases[EXAMPLE_ID] = c; }
+const fileInput = document.getElementById("file");
+fileInput.onchange = e=>{ handleFiles(e.target.files); fileInput.value = ""; };
+const drop = document.getElementById("drop");
+drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", ()=>drop.classList.remove("over"));
+drop.addEventListener("drop", e=>{ e.preventDefault(); drop.classList.remove("over"); handleFiles(e.dataTransfer.files); });
+loadExample(); S.selected = EXAMPLE_ID; render();
+
+S.standalone = !(window.claude && window.claude.use);
+(async()=>{
+  let db = null;
+  if (!S.standalone){
+    const c = window.claude;
+    const [d, sample, user] = await Promise.all([c.use("db").catch(()=>null), c.use("sample").catch(()=>null), c.use("user").catch(()=>null)]);
+    db = d; S.sample = sample; S.user = user;
+    if (user) S.me = await user.id();
+  }
+  S.db = db || localDb(); S.local = !db;
+  S.db.collection("incidents").onSnapshot(snap=>{
+    const keep = Object.fromEntries(Object.entries(S.cases).filter(([id,c])=>c.example));
+    snap.docs.forEach(d=>{ keep[d.id] = {...d.data(), id:d.id}; });
+    const hadReal = Object.keys(keep).some(id=>!keep[id].example);
+    if (hadReal && !S.userPickedExample && keep[EXAMPLE_ID]) { delete keep[EXAMPLE_ID]; if (S.selected === EXAMPLE_ID) S.selected = null; }
+    S.cases = keep; render();
+  }, ()=>{});
+  render();
+})();
+</script>
